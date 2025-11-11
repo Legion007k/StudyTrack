@@ -1,6 +1,6 @@
 using System.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
-using StudyTrack.Models;
+using StudyTrack.Models.ViewModels;
 
 namespace StudyTrack.Controllers
 {

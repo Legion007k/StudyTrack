@@ -1,0 +1,41 @@
+﻿@model StudyTrack.Models.ViewModels.ActividadViewModel
+
+<h2>Editar Actividad</h2>
+
+<form asp-action="Editar" method="post">
+    <input type="hidden" asp-for="Actividadd_Id" />
+
+    <div class="form-group">
+        <label asp-for="Titulo"></label>
+        <input asp-for="Titulo" class="form-control" />
+        <span asp-validation-for="Titulo" class="text-danger"></span>
+    </div>
+
+    <div class="form-group">
+        <label asp-for="Descripcion"></label>
+        <textarea asp-for="Descripcion" class="form-control"></textarea>
+    </div>
+
+    <div class="form-group">
+        <label asp-for="FechaInicio"></label>
+        <input asp-for="FechaInicio" type="datetime-local" class="form-control" />
+    </div>
+
+    <div class="form-group">
+        <label asp-for="FechaFin"></label>
+        <input asp-for="FechaFin" type="datetime-local" class="form-control" />
+    </div>
+
+    <div class="form-group form-check">
+        <input asp-for="Notificar" class="form-check-input" />
+        <label asp-for="Notificar"></label>
+    </div>
+
+    <button type="submit" class="btn btn-primary mt-3">Guardar</button>
+</form>
+
+<form asp-action="Eliminar" method="post">
+    <input type="hidden" asp-for="Actividadd_Id" />
+
+    <button type="submit" class="btn btn-primary mt-3">Borrar</button>
+</form>

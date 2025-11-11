@@ -1,4 +1,4 @@
-namespace StudyTrack.Models
+namespace StudyTrack.Models.ViewModels
 {
     public class ErrorViewModel
     {
