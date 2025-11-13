@@ -1,5 +1,5 @@
 ﻿<!DOCTYPE html>
-<html lang="en">
+<html lang="es">
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -7,26 +7,41 @@
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/StudyTrack.styles.css" asp-append-version="true" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
 </head>
 <body>
     <header>
-        <nav class="navbar navbar-expand-sm navbar-toggleable-sm navbar-light bg-white border-bottom box-shadow mb-3">
-            <div class="container-fluid">
-                <a class="navbar-brand" asp-area="" asp-controller="Home" asp-action="Index">StudyTrack</a>
+        <nav class="navbar navbar-expand-lg navbar-dark bg-gradient-primary shadow-sm">
+            <div class="container">
+                <a class="navbar-brand d-flex align-items-center" asp-area="" asp-controller="Home" asp-action="Index">
+                    <img src="~/images/StudyTrack.jpg" alt="StudyTrack Logo" class="logo-img me-2" />
+                    <span class="brand-text">StudyTrack</span>
+                </a>
                 <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target=".navbar-collapse" aria-controls="navbarSupportedContent"
                         aria-expanded="false" aria-label="Toggle navigation">
                     <span class="navbar-toggler-icon"></span>
                 </button>
-                <div class="navbar-collapse collapse d-sm-inline-flex justify-content-between">
-                    <ul class="navbar-nav flex-grow-1">
+                <div class="navbar-collapse collapse d-lg-inline-flex justify-content-between">
+                    <ul class="navbar-nav ms-auto mb-2 mb-lg-0">
                         <li class="nav-item">
-                            <a class="nav-link text-dark" asp-area="" asp-controller="Home" asp-action="Index">Home</a>
+                            <a class="nav-link nav-link-custom" asp-area="" asp-controller="Home" asp-action="Index">
+                                <i class="fas fa-home"></i> Inicio
+                            </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link text-dark" asp-area="" asp-controller="Home" asp-action="Privacy">Privacy</a>
+                            <a class="nav-link nav-link-custom" asp-area="" asp-controller="Home" asp-action="StudySpace">
+                                <i class="fas fa-book-reader"></i> Study Space
+                            </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link text-dark" asp-area="" asp-controller="Calendar" asp-action="Index">Index</a>
+                            <a class="nav-link nav-link-custom" asp-area="" asp-controller="Home" asp-action="Pomodoro">
+                                <i class="fas fa-clock"></i> Pomodoro
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link nav-link-custom" asp-area="" asp-controller="Calendar" asp-action="Index">
+                                <i class="fas fa-calendar-alt"></i> Calendario
+                            </a>
                         </li>
                     </ul>
                     <partial name="_LoginPartial" />
@@ -34,15 +49,41 @@
             </div>
         </nav>
     </header>
-    <div class="container">
-        <main role="main" class="pb-3">
-            @RenderBody()
-        </main>
-    </div>
+    <main role="main">
+        @RenderBody()
+    </main>
 
-    <footer class="border-top footer text-muted">
-        <div class="container">
-            &copy; 2025 - StudyTrack - <a asp-area="" asp-controller="Home" asp-action="Privacy">Privacy</a>
+    <footer class="footer-custom mt-5">
+        <div class="container py-4">
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="d-flex align-items-center mb-3">
+                        <img src="~/images/StudyTrack.jpg" alt="StudyTrack Logo" class="footer-logo me-2" />
+                        <span class="footer-brand">StudyTrack</span>
+                    </div>
+                    <p class="text-muted">Tu compañero perfecto para gestionar el tiempo de estudio y alcanzar tus metas académicas.</p>
+                </div>
+                <div class="col-md-3">
+                    <h5 class="footer-title">Enlaces Rápidos</h5>
+                    <ul class="list-unstyled">
+                        <li><a href="/Home/StudySpace" class="footer-link">Study Space</a></li>
+                        <li><a href="/Home/Pomodoro" class="footer-link">Pomodoro</a></li>
+                        <li><a href="/Calendar/Index" class="footer-link">Calendario</a></li>
+                    </ul>
+                </div>
+                <div class="col-md-3">
+                    <h5 class="footer-title">Soporte</h5>
+                    <ul class="list-unstyled">
+                        <li><a href="/Home/Privacy" class="footer-link">Privacidad</a></li>
+                        <li><a href="#" class="footer-link">Ayuda</a></li>
+                        <li><a href="#" class="footer-link">Contacto</a></li>
+                    </ul>
+                </div>
+            </div>
+            <hr class="my-4" />
+            <div class="text-center text-muted">
+                <p class="mb-0">&copy; 2025 StudyTrack. Todos los derechos reservados.</p>
+            </div>
         </div>
     </footer>
     <script src="~/lib/jquery/dist/jquery.min.js"></script>

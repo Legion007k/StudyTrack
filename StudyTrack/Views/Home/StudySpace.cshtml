@@ -1,0 +1,900 @@
+@{
+    ViewData["Title"] = "Study Space";
+}
+
+<style>
+    .study-space-wrapper {
+        max-width: 1600px;
+        margin: 0 auto;
+        padding: 0 15px;
+    }
+
+    .study-space-container {
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+        min-height: calc(100vh - 150px);
+        width: 100%;
+    }
+
+    .pomodoro-section {
+        background: #f8f9fa;
+        border-radius: 10px;
+        padding: 20px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+
+    .pomodoro-horizontal {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 30px;
+        flex-wrap: wrap;
+    }
+
+    .pomodoro-timer-display {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 5px;
+        text-align: center;
+    }
+
+    .pomodoro-controls-area {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 10px;
+        flex: 1;
+        justify-content: center;
+    }
+
+    .pomodoro-controls-area #session-info {
+        margin-bottom: 5px;
+    }
+
+    .pomodoro-progress-area {
+        flex: 1;
+        min-width: 250px;
+    }
+
+    .content-sections {
+        flex: 1;
+        display: flex;
+        gap: 20px;
+        min-height: 0;
+    }
+
+    .files-section {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        background: #ffffff;
+        border-radius: 10px;
+        padding: 20px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        min-width: 0;
+    }
+
+    .notes-section {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        background: #ffffff;
+        border-radius: 10px;
+        padding: 20px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        min-width: 0;
+    }
+
+    #timer-display {
+        font-size: 3.5rem !important;
+        font-weight: bold;
+        color: #dc3545;
+        margin: 0;
+        line-height: 1;
+    }
+
+    #session-info {
+        margin: 0;
+    }
+
+    #session-info {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    #session-info h4 {
+        font-size: 0.95rem;
+        margin: 0;
+        font-weight: 600;
+    }
+
+    #session-info p {
+        font-size: 0.9rem;
+        margin: 0;
+    }
+
+    #session-info .separator {
+        color: #dee2e6;
+        font-weight: 300;
+    }
+
+    .file-viewer-content {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        min-height: 0;
+    }
+
+    .file-drop-zone {
+        border: 3px dashed #dee2e6;
+        border-radius: 8px;
+        padding: 30px;
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        background: #f8f9fa;
+    }
+
+    .file-drop-zone:hover, .file-drop-zone.drag-over {
+        border-color: #667eea;
+        background: #f0f2ff;
+    }
+
+    .file-drop-zone i {
+        font-size: 3rem;
+        color: #667eea;
+        margin-bottom: 10px;
+    }
+
+    .file-tabs {
+        display: flex;
+        gap: 5px;
+        overflow-x: auto;
+        padding-bottom: 5px;
+        border-bottom: 2px solid #e9ecef;
+    }
+
+    .file-tab {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 12px;
+        background: #f8f9fa;
+        border: 1px solid #dee2e6;
+        border-radius: 6px 6px 0 0;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        white-space: nowrap;
+        font-size: 0.85rem;
+    }
+
+    .file-tab:hover {
+        background: #e9ecef;
+    }
+
+    .file-tab.active {
+        background: white;
+        border-bottom-color: white;
+        font-weight: 600;
+    }
+
+    .file-tab .close-tab {
+        color: #dc3545;
+        font-weight: bold;
+        margin-left: 5px;
+        cursor: pointer;
+    }
+
+    .file-tab .close-tab:hover {
+        color: #a71d2a;
+    }
+
+    .file-display-area {
+        flex: 1;
+        background: #f8f9fa;
+        border-radius: 8px;
+        overflow: hidden;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 0;
+    }
+
+    .file-display-area iframe {
+        width: 100%;
+        height: 100%;
+        border: none;
+    }
+
+    .file-display-area img {
+        max-width: 100%;
+        max-height: 100%;
+        width: auto;
+        height: auto;
+        border: none;
+        object-fit: contain;
+    }
+
+    .file-display-area .text-content {
+        width: 100%;
+        height: 100%;
+        overflow: auto;
+        padding: 15px;
+        background: white;
+        font-family: 'Courier New', monospace;
+        font-size: 0.9rem;
+        white-space: pre-wrap;
+        word-wrap: break-word;
+    }
+
+    .no-file-message {
+        text-align: center;
+        color: #6c757d;
+    }
+
+    .no-file-message i {
+        font-size: 3rem;
+        margin-bottom: 1rem;
+        color: #dee2e6;
+    }
+
+
+
+    .section-header {
+        margin-bottom: 20px;
+        padding-bottom: 15px;
+        border-bottom: 3px solid #dee2e6;
+    }
+
+    .section-header h2 {
+        margin: 0;
+        font-size: 1.75rem;
+        font-weight: 600;
+    }
+
+    .notes-content {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        gap: 15px;
+    }
+
+    .pomodoro-content {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+    }
+
+    .notes-textarea {
+        flex: 1;
+        resize: none;
+        border: 2px solid #e9ecef;
+        border-radius: 8px;
+        padding: 15px;
+        font-size: 1rem;
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        transition: border-color 0.3s ease;
+    }
+
+    .notes-textarea:focus {
+        outline: none;
+        border-color: #667eea;
+        box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+    }
+
+    .btn-download-notes {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border: none;
+        color: white;
+        padding: 12px 24px;
+        font-weight: 600;
+        border-radius: 8px;
+        transition: all 0.3s ease;
+    }
+
+    .btn-download-notes:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
+        color: white;
+    }
+
+    .placeholder-content {
+        text-align: center;
+        color: #6c757d;
+    }
+
+    .placeholder-content i {
+        font-size: 3rem;
+        margin-bottom: 1rem;
+        color: #dee2e6;
+    }
+
+    .pomodoro-controls {
+        display: flex;
+        gap: 10px;
+    }
+
+    .pomodoro-controls .btn {
+        padding: 8px 16px;
+        font-size: 0.85rem;
+        font-weight: 500;
+        opacity: 0.85;
+        transition: all 0.2s ease;
+    }
+
+    .pomodoro-controls .btn:hover {
+        opacity: 1;
+        transform: translateY(-1px);
+    }
+
+    .progress-container {
+        width: 100%;
+    }
+
+    .progress {
+        height: 40px !important;
+        border-radius: 20px;
+    }
+
+    .progress-bar {
+        border-radius: 20px;
+        font-size: 0.95rem;
+        font-weight: 600;
+    }
+
+    .session-info-compact {
+        font-size: 0.75rem;
+        color: #6c757d;
+        text-align: center;
+        line-height: 1.4;
+    }
+
+    /* Responsivo */
+    @@media (max-width: 1200px) {
+        .pomodoro-horizontal {
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .content-sections {
+            flex-direction: column;
+        }
+
+        .files-section,
+        .notes-section {
+            min-height: 400px;
+        }
+
+        #timer-display {
+            font-size: 2rem !important;
+        }
+    }
+</style>
+
+<!--<div class="text-center mb-4">
+    <h1 class="display-5">📚 STUDY SPACE 📚</h1>
+</div>
+-->
+
+<div class="study-space-wrapper">
+<div class="study-space-container">
+    <!-- Sección Pomodoro Horizontal (Arriba) -->
+    <div class="pomodoro-section">
+        <div class="pomodoro-horizontal">
+            <div class="pomodoro-timer-display">
+                <div id="timer-display">25:00</div>
+                <div class="session-info-compact">
+                    ⏰ 25 min trabajo | ☕ 5 min descanso | 🎯 15 min largo
+                </div>
+            </div>
+
+            <div class="pomodoro-controls-area">
+                <div id="session-info">
+                    <h4 id="session-type" class="text-muted">Sesión de Trabajo</h4>
+                    <span class="separator">•</span>
+                    <p class="text-muted">Sesión <span id="session-count">1</span></p>
+                </div>
+                <div class="pomodoro-controls">
+                    <button id="start-btn" class="btn btn-success">
+                        Iniciar
+                    </button>
+                    <button id="pause-btn" class="btn btn-warning" disabled>
+                        Pausar
+                    </button>
+                    <button id="reset-btn" class="btn btn-danger">
+                        Reiniciar
+                    </button>
+                </div>
+            </div>
+
+            <div class="pomodoro-progress-area">
+                <div class="progress-container">
+                    <div class="progress">
+                        <div id="progress-bar" class="progress-bar progress-bar-striped progress-bar-animated bg-success"
+                             role="progressbar" style="width: 0%">
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Secciones Inferiores: Archivos y Notas -->
+    <div class="content-sections">
+        <!-- Visor de Archivos (Izquierda) -->
+        <div class="files-section">
+            <div class="section-header">
+                <h2>📁 Visor de Archivos</h2>
+            </div>
+            <div class="file-viewer-content">
+                <!-- Drop Zone -->
+                <div class="file-drop-zone" id="fileDropZone" style="display: none;">
+                    <i class="fas fa-cloud-upload-alt"></i>
+                    <p class="mb-0"><strong>Arrastra archivos aquí</strong> o haz clic para seleccionar</p>
+                    <small class="text-muted">Soporta: PDF, Word, Excel, PowerPoint, imágenes, texto</small>
+                    <input type="file" id="fileInput" multiple style="display: none;" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.jpg,.jpeg,.png,.gif,.txt,.csv">
+                </div>
+
+                <!-- File Tabs -->
+                <div class="file-tabs" id="fileTabs" style="display: none;"></div>
+
+                <!-- Display Area -->
+                <div class="file-display-area" id="fileDisplayArea">
+                    <div class="no-file-message">
+                        <i class="fas fa-file-alt"></i>
+                        <p class="mb-0">Arrastra archivos aquí para visualizarlos</p>
+                        <button class="btn btn-sm btn-primary mt-2" onclick="document.getElementById('fileInput').click()">
+                            <i class="fas fa-upload me-1"></i>Seleccionar Archivos
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sección de Notas (Derecha) -->
+        <div class="notes-section">
+            <div class="section-header">
+                <h2>📝 Notas</h2>
+            </div>
+            <div class="notes-content">
+                <textarea class="notes-textarea" id="notesTextarea" placeholder="Escribe tus notas aquí..."></textarea>
+                <button class="btn btn-download-notes" onclick="downloadNotes()">
+                    <i class="fas fa-download me-2"></i>Descargar Notas (.txt)
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+</div>
+</div>
+
+@section Scripts {
+    <script>
+        // ========== POMODORO TIMER ==========
+        let timer;
+        let timeLeft = 25 * 60;
+        let isRunning = false;
+        let isPaused = false;
+        let sessionCount = 1;
+        let isWorkSession = true;
+        const WORK_TIME = 25 * 60;
+        const SHORT_BREAK = 5 * 60;
+        const LONG_BREAK = 15 * 60;
+
+        const timerDisplay = document.getElementById('timer-display');
+        const startBtn = document.getElementById('start-btn');
+        const pauseBtn = document.getElementById('pause-btn');
+        const resetBtn = document.getElementById('reset-btn');
+        const progressBar = document.getElementById('progress-bar');
+        const sessionType = document.getElementById('session-type');
+        const sessionCountDisplay = document.getElementById('session-count');
+
+        function updateDisplay() {
+            const minutes = Math.floor(timeLeft / 60);
+            const seconds = timeLeft % 60;
+            timerDisplay.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+
+            const totalTime = isWorkSession ? WORK_TIME : (sessionCount % 4 === 0 ? LONG_BREAK : SHORT_BREAK);
+            const progress = ((totalTime - timeLeft) / totalTime) * 100;
+            progressBar.style.width = progress + '%';
+        }
+
+        function startTimer() {
+            if (!isRunning) {
+                isRunning = true;
+                startBtn.disabled = true;
+                pauseBtn.disabled = false;
+
+                timer = setInterval(() => {
+                    if (timeLeft > 0) {
+                        timeLeft--;
+                        updateDisplay();
+                    } else {
+                        completeSession();
+                    }
+                }, 1000);
+            }
+        }
+
+        function pauseTimer() {
+            if (isRunning) {
+                isRunning = false;
+                isPaused = true;
+                clearInterval(timer);
+                startBtn.disabled = false;
+                pauseBtn.disabled = true;
+                startBtn.innerHTML = '▶️ Continuar';
+            }
+        }
+
+        function resetTimer() {
+            clearInterval(timer);
+            isRunning = false;
+            isPaused = false;
+            isWorkSession = true;
+            sessionCount = 1;
+            timeLeft = WORK_TIME;
+
+            startBtn.disabled = false;
+            pauseBtn.disabled = true;
+            startBtn.innerHTML = '▶️ Iniciar';
+
+            sessionType.textContent = 'Sesión de Trabajo';
+            sessionType.className = 'text-muted';
+            sessionCountDisplay.textContent = sessionCount;
+            timerDisplay.style.color = '#dc3545';
+            progressBar.className = 'progress-bar progress-bar-striped progress-bar-animated bg-success';
+            progressBar.style.width = '0%';
+
+            updateDisplay();
+        }
+
+        function completeSession() {
+            clearInterval(timer);
+            isRunning = false;
+
+            playNotificationSound();
+
+            if (isWorkSession) {
+                sessionCount++;
+                sessionCountDisplay.textContent = sessionCount;
+
+                if ((sessionCount - 1) % 4 === 0 && sessionCount > 1) {
+                    timeLeft = LONG_BREAK;
+                    sessionType.textContent = '🎉 Descanso Largo';
+                    sessionType.className = 'text-primary';
+                    timerDisplay.style.color = '#0d6efd';
+                    progressBar.className = 'progress-bar progress-bar-striped progress-bar-animated bg-primary';
+                } else {
+                    timeLeft = SHORT_BREAK;
+                    sessionType.textContent = '☕ Descanso Corto';
+                    sessionType.className = 'text-info';
+                    timerDisplay.style.color = '#0dcaf0';
+                    progressBar.className = 'progress-bar progress-bar-striped progress-bar-animated bg-info';
+                }
+                isWorkSession = false;
+            } else {
+                timeLeft = WORK_TIME;
+                isWorkSession = true;
+                sessionType.textContent = '💼 Sesión de Trabajo';
+                sessionType.className = 'text-muted';
+                timerDisplay.style.color = '#dc3545';
+                progressBar.className = 'progress-bar progress-bar-striped progress-bar-animated bg-success';
+            }
+
+            updateDisplay();
+            startBtn.disabled = false;
+            pauseBtn.disabled = true;
+            startBtn.innerHTML = '▶️ Iniciar';
+
+            showNotification();
+        }
+
+        function playNotificationSound() {
+            try {
+                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+
+                oscillator.frequency.value = 800;
+                oscillator.type = 'sine';
+
+                gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
+
+                oscillator.start(audioContext.currentTime);
+                oscillator.stop(audioContext.currentTime + 0.5);
+            } catch (e) {
+                console.log('No se pudo reproducir el sonido');
+            }
+        }
+
+        function showNotification() {
+            if ('Notification' in window && Notification.permission === 'granted') {
+                const message = isWorkSession ?
+                    '¡Es hora de trabajar! 💼' :
+                    '¡Tómate un descanso! ☕';
+                new Notification('Pomodoro Timer', {
+                    body: message,
+                    icon: '/favicon.ico'
+                });
+            }
+        }
+
+        if ('Notification' in window && Notification.permission === 'default') {
+            Notification.requestPermission();
+        }
+
+        startBtn.addEventListener('click', startTimer);
+        pauseBtn.addEventListener('click', pauseTimer);
+        resetBtn.addEventListener('click', resetTimer);
+
+        updateDisplay();
+
+        // ========== NOTES FUNCTIONALITY ==========
+        const notesTextarea = document.getElementById('notesTextarea');
+
+        // Load notes from localStorage on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            const savedNotes = localStorage.getItem('studyNotes');
+            if (savedNotes) {
+                notesTextarea.value = savedNotes;
+            }
+        });
+
+        // Auto-save notes to localStorage
+        notesTextarea.addEventListener('input', function() {
+            localStorage.setItem('studyNotes', this.value);
+        });
+
+        // Download notes as .txt file
+        function downloadNotes() {
+            const notes = notesTextarea.value;
+            if (!notes.trim()) {
+                alert('No hay notas para descargar');
+                return;
+            }
+
+            const date = new Date();
+            const filename = `Notas_${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}_${String(date.getHours()).padStart(2, '0')}-${String(date.getMinutes()).padStart(2, '0')}.txt`;
+
+            const blob = new Blob([notes], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = filename;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+        }
+
+        // ========== FILE VIEWER FUNCTIONALITY ==========
+        let openFiles = [];
+        let activeFileIndex = -1;
+
+        const fileDropZone = document.getElementById('fileDropZone');
+        const fileInput = document.getElementById('fileInput');
+        const fileTabs = document.getElementById('fileTabs');
+        const fileDisplayArea = document.getElementById('fileDisplayArea');
+
+        // Show drop zone when clicked on display area
+        fileDisplayArea.addEventListener('click', function(e) {
+            if (openFiles.length === 0 && e.target.closest('.btn-primary')) {
+                fileInput.click();
+            }
+        });
+
+        // Drag and drop events
+        fileDisplayArea.addEventListener('dragover', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            this.style.borderColor = '#667eea';
+        });
+
+        fileDisplayArea.addEventListener('dragleave', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            this.style.borderColor = '';
+        });
+
+        fileDisplayArea.addEventListener('drop', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            this.style.borderColor = '';
+            handleFiles(e.dataTransfer.files);
+        });
+
+        // File input change
+        fileInput.addEventListener('change', function(e) {
+            handleFiles(this.files);
+        });
+
+        function handleFiles(files) {
+            Array.from(files).forEach(file => {
+                const fileData = {
+                    name: file.name,
+                    type: file.type,
+                    size: file.size,
+                    file: file
+                };
+                openFiles.push(fileData);
+            });
+
+            if (openFiles.length > 0) {
+                updateFileTabs();
+                if (activeFileIndex === -1) {
+                    switchToFile(0);
+                } else {
+                    switchToFile(activeFileIndex);
+                }
+            }
+        }
+
+        function updateFileTabs() {
+            fileTabs.innerHTML = '';
+            fileTabs.style.display = openFiles.length > 0 ? 'flex' : 'none';
+
+            openFiles.forEach((fileData, index) => {
+                const tab = document.createElement('div');
+                tab.className = 'file-tab' + (index === activeFileIndex ? ' active' : '');
+                
+                const icon = getFileIcon(fileData.name, fileData.type);
+                tab.innerHTML = `
+                    <i class="${icon}"></i>
+                    <span>${truncateFileName(fileData.name, 20)}</span>
+                    <span class="close-tab" onclick="closeFile(${index}); event.stopPropagation();">×</span>
+                `;
+                
+                tab.onclick = () => switchToFile(index);
+                fileTabs.appendChild(tab);
+            });
+        }
+
+        function switchToFile(index) {
+            if (index < 0 || index >= openFiles.length) return;
+            
+            activeFileIndex = index;
+            updateFileTabs();
+            displayFile(openFiles[index]);
+        }
+
+        function closeFile(index) {
+            openFiles.splice(index, 1);
+            
+            if (openFiles.length === 0) {
+                activeFileIndex = -1;
+                fileDisplayArea.innerHTML = `
+                    <div class="no-file-message">
+                        <i class="fas fa-file-alt"></i>
+                        <p class="mb-0">Arrastra archivos aquí para visualizarlos</p>
+                        <button class="btn btn-sm btn-primary mt-2" onclick="document.getElementById('fileInput').click()">
+                            <i class="fas fa-upload me-1"></i>Seleccionar Archivos
+                        </button>
+                    </div>
+                `;
+                fileTabs.style.display = 'none';
+            } else {
+                if (activeFileIndex >= openFiles.length) {
+                    activeFileIndex = openFiles.length - 1;
+                }
+                updateFileTabs();
+                switchToFile(activeFileIndex);
+            }
+        }
+
+        function displayFile(fileData) {
+            fileDisplayArea.innerHTML = '';
+            const file = fileData.file;
+            const fileName = file.name.toLowerCase();
+
+            // PDF files
+            if (file.type === 'application/pdf' || fileName.endsWith('.pdf')) {
+                const url = URL.createObjectURL(file);
+                fileDisplayArea.innerHTML = `<iframe src="${url}#toolbar=0"></iframe>`;
+            }
+            // Image files
+            else if (file.type.startsWith('image/')) {
+                const url = URL.createObjectURL(file);
+                fileDisplayArea.innerHTML = `<img src="${url}" alt="${file.name}">`;
+            }
+            // Text files
+            else if (file.type.startsWith('text/') || fileName.endsWith('.txt') || fileName.endsWith('.csv')) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    fileDisplayArea.innerHTML = `<div class="text-content">${escapeHtml(e.target.result)}</div>`;
+                };
+                reader.readAsText(file);
+            }
+            // Office files (Word, Excel, PowerPoint) - Use Office Online Viewer
+            else if (fileName.endsWith('.doc') || fileName.endsWith('.docx') || 
+                     fileName.endsWith('.xls') || fileName.endsWith('.xlsx') || 
+                     fileName.endsWith('.ppt') || fileName.endsWith('.pptx')) {
+                const url = URL.createObjectURL(file);
+                fileDisplayArea.innerHTML = `
+                    <div class="no-file-message">
+                        <i class="fas fa-file-word" style="color: #2b579a;"></i>
+                        <p class="mb-2"><strong>${file.name}</strong></p>
+                        <p class="mb-2">Tamaño: ${formatFileSize(file.size)}</p>
+                        <p class="text-muted mb-3">Los archivos de Office no se pueden visualizar directamente en el navegador</p>
+                        <button class="btn btn-primary" onclick="downloadCurrentFile()">
+                            <i class="fas fa-download me-1"></i>Descargar para ver
+                        </button>
+                    </div>
+                `;
+            }
+            // Other files
+            else {
+                fileDisplayArea.innerHTML = `
+                    <div class="no-file-message">
+                        <i class="fas fa-file"></i>
+                        <p class="mb-2"><strong>${file.name}</strong></p>
+                        <p class="mb-2">Tamaño: ${formatFileSize(file.size)}</p>
+                        <p class="text-muted mb-3">Este tipo de archivo no se puede visualizar</p>
+                        <button class="btn btn-primary" onclick="downloadCurrentFile()">
+                            <i class="fas fa-download me-1"></i>Descargar archivo
+                        </button>
+                    </div>
+                `;
+            }
+        }
+
+        function downloadCurrentFile() {
+            if (activeFileIndex >= 0 && activeFileIndex < openFiles.length) {
+                const file = openFiles[activeFileIndex].file;
+                const url = URL.createObjectURL(file);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = file.name;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                URL.revokeObjectURL(url);
+            }
+        }
+
+        function getFileIcon(fileName, fileType) {
+            const ext = fileName.split('.').pop().toLowerCase();
+            
+            if (fileType.startsWith('image/')) return 'fas fa-file-image';
+            if (fileType === 'application/pdf' || ext === 'pdf') return 'fas fa-file-pdf';
+            if (ext === 'doc' || ext === 'docx') return 'fas fa-file-word';
+            if (ext === 'xls' || ext === 'xlsx') return 'fas fa-file-excel';
+            if (ext === 'ppt' || ext === 'pptx') return 'fas fa-file-powerpoint';
+            if (fileType.startsWith('text/') || ext === 'txt') return 'fas fa-file-alt';
+            
+            return 'fas fa-file';
+        }
+
+        function truncateFileName(name, maxLength) {
+            if (name.length <= maxLength) return name;
+            const ext = name.split('.').pop();
+            const nameWithoutExt = name.substring(0, name.lastIndexOf('.'));
+            const truncated = nameWithoutExt.substring(0, maxLength - ext.length - 4) + '...';
+            return truncated + '.' + ext;
+        }
+
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+    </script>
+}

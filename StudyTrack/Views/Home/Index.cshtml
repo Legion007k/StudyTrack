@@ -1,8 +1,244 @@
 ﻿@{
-    ViewData["Title"] = "Home Page";
+    ViewData["Title"] = "Inicio";
 }
 
-<div class="text-center">
-    <h1 class="display-4">Welcome</h1>
-    <p>Learn about <a href="https://learn.microsoft.com/aspnet/core">building Web apps with ASP.NET Core</a>.</p>
-</div>
+<!-- Hero Section -->
+<section class="hero-section-simple">
+    <div class="hero-cat-image">
+        <img src="~/images/StudyTrackCAT.png" alt="StudyTrack Cat" />
+    </div>
+    <div class="container">
+        <div class="hero-content-centered">
+            <h1 class="hero-title-centered">STUDYTRACK</h1>
+            <p class="hero-subtitle-centered">Organiza tu tiempo y mejora tu productividad</p>
+            
+            <div class="hero-buttons-centered">
+                <a href="/Home/StudySpace" class="btn btn-primary btn-lg btn-comenzar">
+                    <i class="fas fa-rocket"></i> COMENZAR
+                </a>
+                
+                @if (User.Identity?.IsAuthenticated != true)
+                {
+                    <div class="auth-buttons">
+                        <a href="/Identity/Account/Register" class="btn btn-outline-primary btn-lg">
+                            <i class="fas fa-user-plus"></i> REGISTRARSE
+                        </a>
+                        <a href="/Identity/Account/Login" class="btn btn-outline-primary btn-lg">
+                            <i class="fas fa-sign-in-alt"></i> INICIAR SESIÓN
+                        </a>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Features Section -->
+<section class="features-section py-5 bg-gray-section">
+    <div class="container">
+        <div class="text-center mb-5">
+            <h2 class="section-title">¿Por qué StudyTrack?</h2>
+            <p class="section-subtitle">Descubre las herramientas que transformarán tu forma de estudiar</p>
+        </div>
+        <div class="row g-4">
+            <div class="col-md-4">
+                <div class="feature-card">
+                    <div class="feature-icon bg-primary">
+                        <i class="fas fa-clock fa-2x"></i>
+                    </div>
+                    <h3 class="feature-title">Técnica Pomodoro</h3>
+                    <p class="feature-description">
+                        Mantén tu enfoque con intervalos de 25 minutos de estudio concentrado 
+                        seguidos de descansos estratégicos. Maximiza tu productividad y previene el agotamiento.
+                    </p>
+                    <a href="/Home/Pomodoro" class="feature-link">
+                        Probar Pomodoro <i class="fas fa-arrow-right"></i>
+                    </a>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="feature-card">
+                    <div class="feature-icon bg-success">
+                        <i class="fas fa-calendar-check fa-2x"></i>
+                    </div>
+                    <h3 class="feature-title">Calendario Inteligente</h3>
+                    <p class="feature-description">
+                        Organiza todas tus actividades, tareas y exámenes en un calendario visual e intuitivo. 
+                        Nunca vuelvas a olvidar una fecha importante.
+                    </p>
+                    <a href="/Calendar/Index" class="feature-link">
+                        Ver Calendario <i class="fas fa-arrow-right"></i>
+                    </a>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="feature-card">
+                    <div class="feature-icon bg-info">
+                        <i class="fas fa-book-reader fa-2x"></i>
+                    </div>
+                    <h3 class="feature-title">Study Space</h3>
+                    <p class="feature-description">
+                        Combina el poder del Pomodoro con tu calendario en una sola vista. 
+                        Todo lo que necesitas para estudiar, en un solo lugar.
+                    </p>
+                    <a href="/Home/StudySpace" class="feature-link">
+                        Explorar Study Space <i class="fas fa-arrow-right"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<style>
+    /* Eliminar padding del contenedor principal para esta página */
+    main > .container {
+        padding: 0 !important;
+        max-width: 100% !important;
+    }
+
+    /* Hero Section Simple */
+    .hero-section-simple {
+        background: #ffffff;
+        min-height: 85vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        position: relative;
+        overflow: hidden;
+        padding: 60px 20px;
+    }
+
+    .hero-cat-image {
+        position: absolute;
+        bottom: 0;
+        right: 0;
+        width: 400px;
+        height: 400px;
+        z-index: 1;
+    }
+
+    .hero-cat-image img {
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+    }
+
+    .hero-content-centered {
+        text-align: center;
+        z-index: 2;
+        position: relative;
+        max-width: 800px;
+        margin: 0 auto;
+    }
+
+    .hero-title-centered {
+        font-size: 5rem;
+        font-weight: 900;
+        color: #1e293b;
+        margin-bottom: 1.5rem;
+        letter-spacing: 2px;
+    }
+
+    .hero-subtitle-centered {
+        font-size: 1.5rem;
+        color: #64748b;
+        margin-bottom: 3rem;
+        font-weight: 400;
+    }
+
+    .hero-buttons-centered {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 1.5rem;
+    }
+
+    .btn-comenzar {
+        padding: 1rem 4rem;
+        font-size: 1.25rem;
+        font-weight: 700;
+        border-radius: 50px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border: none;
+        box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
+        transition: all 0.3s ease;
+        min-width: 300px;
+    }
+
+    .btn-comenzar:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 15px 40px rgba(102, 126, 234, 0.6);
+    }
+
+    .auth-buttons {
+        display: flex;
+        gap: 1rem;
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+
+    .auth-buttons .btn {
+        padding: 0.75rem 2rem;
+        font-size: 1rem;
+        font-weight: 600;
+        border-radius: 50px;
+        border-width: 2px;
+        min-width: 180px;
+        transition: all 0.3s ease;
+    }
+
+    .auth-buttons .btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 20px rgba(102, 126, 234, 0.3);
+    }
+
+    /* Background gris para features section */
+    .bg-gray-section {
+        background: linear-gradient(180deg, #e2e8f0 0%, #cbd5e1 100%);
+    }
+
+    /* Responsive */
+    @@media (max-width: 768px) {
+        .hero-title-centered {
+            font-size: 3rem;
+        }
+
+        .hero-subtitle-centered {
+            font-size: 1.2rem;
+        }
+
+        .btn-comenzar {
+            padding: 0.875rem 2rem;
+            font-size: 1.1rem;
+            min-width: 250px;
+        }
+
+        .hero-cat-image {
+            width: 250px;
+            height: 250px;
+            opacity: 0.3;
+        }
+
+        .auth-buttons {
+            flex-direction: column;
+            width: 100%;
+        }
+
+        .auth-buttons .btn {
+            width: 100%;
+            max-width: 300px;
+        }
+    }
+
+    @@media (max-width: 480px) {
+        .hero-title-centered {
+            font-size: 2.5rem;
+        }
+
+        .hero-cat-image {
+            width: 180px;
+            height: 180px;
+        }
+    }
+</style>

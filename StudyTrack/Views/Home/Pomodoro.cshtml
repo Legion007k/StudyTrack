@@ -1,0 +1,235 @@
+@{
+    ViewData["Title"] = "Pomodoro Timer";
+}
+
+<div class="text-center">
+    <h1 class="display-4">🍅 POMODORO TIMER 🍅</h1>
+    <p class="lead">Mantén tu enfoque con la técnica Pomodoro de 25 minutos</p>
+</div>
+
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow-lg">
+                <div class="card-body text-center p-5">
+                    <div id="timer-display" class="display-1 fw-bold mb-4" style="font-size: 5rem; color: #dc3545;">
+                        25:00
+                    </div>
+                    
+                    <div id="session-info" class="mb-4">
+                        <h4 id="session-type" class="text-muted">Sesión de Trabajo</h4>
+                        <p class="text-muted">Sesión <span id="session-count">1</span></p>
+                    </div>
+
+                    <div class="btn-group mb-3" role="group">
+                        <button id="start-btn" class="btn btn-success btn-lg px-5">
+                            <i class="bi bi-play-fill"></i> Iniciar
+                        </button>
+                        <button id="pause-btn" class="btn btn-warning btn-lg px-5" disabled>
+                            <i class="bi bi-pause-fill"></i> Pausar
+                        </button>
+                        <button id="reset-btn" class="btn btn-danger btn-lg px-5">
+                            <i class="bi bi-arrow-clockwise"></i> Reiniciar
+                        </button>
+                    </div>
+
+                    <div class="progress" style="height: 30px;">
+                        <div id="progress-bar" class="progress-bar progress-bar-striped bg-success" 
+                             role="progressbar" style="width: 0%">
+                        </div>
+                    </div>
+
+                    <div class="mt-4">
+                        <small class="text-muted">
+                            ⏰ 25 min trabajo · ☕ 5 min descanso · 🎯 Después de 4 sesiones: 15 min descanso
+                        </small>
+                    </div>
+                </div>
+            </div>
+
+            <div class="alert alert-info mt-4" role="alert">
+                <h5 class="alert-heading">💡 ¿Qué es la técnica Pomodoro?</h5>
+                <p class="mb-0">
+                    La técnica Pomodoro es un método de gestión del tiempo que usa intervalos de 25 minutos 
+                    de trabajo concentrado, seguidos de breves descansos. Esto ayuda a mantener la concentración 
+                    y prevenir el agotamiento mental.
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        let timer;
+        let timeLeft = 25 * 60; // 25 minutos en segundos
+        let isRunning = false;
+        let isPaused = false;
+        let sessionCount = 1;
+        let isWorkSession = true;
+        const WORK_TIME = 25 * 60;
+        const SHORT_BREAK = 5 * 60;
+        const LONG_BREAK = 15 * 60;
+
+        const timerDisplay = document.getElementById('timer-display');
+        const startBtn = document.getElementById('start-btn');
+        const pauseBtn = document.getElementById('pause-btn');
+        const resetBtn = document.getElementById('reset-btn');
+        const progressBar = document.getElementById('progress-bar');
+        const sessionType = document.getElementById('session-type');
+        const sessionCountDisplay = document.getElementById('session-count');
+
+        function updateDisplay() {
+            const minutes = Math.floor(timeLeft / 60);
+            const seconds = timeLeft % 60;
+            timerDisplay.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            
+            // Actualizar barra de progreso
+            const totalTime = isWorkSession ? WORK_TIME : (sessionCount % 4 === 0 ? LONG_BREAK : SHORT_BREAK);
+            const progress = ((totalTime - timeLeft) / totalTime) * 100;
+            progressBar.style.width = progress + '%';
+        }
+
+        function startTimer() {
+            if (!isRunning) {
+                isRunning = true;
+                startBtn.disabled = true;
+                pauseBtn.disabled = false;
+                
+                timer = setInterval(() => {
+                    if (timeLeft > 0) {
+                        timeLeft--;
+                        updateDisplay();
+                    } else {
+                        completeSession();
+                    }
+                }, 1000);
+            }
+        }
+
+        function pauseTimer() {
+            if (isRunning) {
+                isRunning = false;
+                isPaused = true;
+                clearInterval(timer);
+                startBtn.disabled = false;
+                pauseBtn.disabled = true;
+                startBtn.innerHTML = '<i class="bi bi-play-fill"></i> Continuar';
+            }
+        }
+
+        function resetTimer() {
+            clearInterval(timer);
+            isRunning = false;
+            isPaused = false;
+            isWorkSession = true;
+            sessionCount = 1;
+            timeLeft = WORK_TIME;
+            
+            startBtn.disabled = false;
+            pauseBtn.disabled = true;
+            startBtn.innerHTML = '<i class="bi bi-play-fill"></i> Iniciar';
+            
+            sessionType.textContent = 'Sesión de Trabajo';
+            sessionType.className = 'text-muted';
+            sessionCountDisplay.textContent = sessionCount;
+            timerDisplay.style.color = '#dc3545';
+            progressBar.className = 'progress-bar progress-bar-striped bg-success';
+            progressBar.style.width = '0%';
+            
+            updateDisplay();
+        }
+
+        function completeSession() {
+            clearInterval(timer);
+            isRunning = false;
+            
+            // Reproducir sonido de notificación (opcional)
+            playNotificationSound();
+            
+            if (isWorkSession) {
+                // Completar sesión de trabajo
+                sessionCount++;
+                sessionCountDisplay.textContent = sessionCount;
+                
+                // Determinar tipo de descanso
+                if ((sessionCount - 1) % 4 === 0 && sessionCount > 1) {
+                    // Descanso largo después de 4 sesiones
+                    timeLeft = LONG_BREAK;
+                    sessionType.textContent = '🎉 Descanso Largo';
+                    sessionType.className = 'text-primary';
+                    timerDisplay.style.color = '#0d6efd';
+                    progressBar.className = 'progress-bar progress-bar-striped bg-primary';
+                } else {
+                    // Descanso corto
+                    timeLeft = SHORT_BREAK;
+                    sessionType.textContent = '☕ Descanso Corto';
+                    sessionType.className = 'text-info';
+                    timerDisplay.style.color = '#0dcaf0';
+                    progressBar.className = 'progress-bar progress-bar-striped bg-info';
+                }
+                isWorkSession = false;
+            } else {
+                // Completar descanso, volver a trabajo
+                timeLeft = WORK_TIME;
+                isWorkSession = true;
+                sessionType.textContent = '💼 Sesión de Trabajo';
+                sessionType.className = 'text-muted';
+                timerDisplay.style.color = '#dc3545';
+                progressBar.className = 'progress-bar progress-bar-striped bg-success';
+            }
+            
+            updateDisplay();
+            startBtn.disabled = false;
+            pauseBtn.disabled = true;
+            startBtn.innerHTML = '<i class="bi bi-play-fill"></i> Iniciar';
+            
+            // Mostrar notificación
+            showNotification();
+        }
+
+        function playNotificationSound() {
+            // Crear un tono de notificación simple
+            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            
+            oscillator.frequency.value = 800;
+            oscillator.type = 'sine';
+            
+            gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
+            
+            oscillator.start(audioContext.currentTime);
+            oscillator.stop(audioContext.currentTime + 0.5);
+        }
+
+        function showNotification() {
+            if ('Notification' in window && Notification.permission === 'granted') {
+                const message = isWorkSession ? 
+                    '¡Es hora de trabajar! 💼' : 
+                    '¡Tómate un descanso! ☕';
+                new Notification('Pomodoro Timer', {
+                    body: message,
+                    icon: '/favicon.ico'
+                });
+            }
+        }
+
+        // Solicitar permisos de notificación
+        if ('Notification' in window && Notification.permission === 'default') {
+            Notification.requestPermission();
+        }
+
+        // Event listeners
+        startBtn.addEventListener('click', startTimer);
+        pauseBtn.addEventListener('click', pauseTimer);
+        resetBtn.addEventListener('click', resetTimer);
+
+        // Inicializar display
+        updateDisplay();
+    </script>
+}
