@@ -1,41 +1,47 @@
 ﻿@model StudyTrack.Models.ViewModels.ActividadViewModel
 
-<h2>Editar Actividad</h2>
+<div class="actividad-card container mt-5">
+    <h2 class="actividad-title mb-4">Editar actividad</h2>
 
-<form asp-action="Editar" method="post">
-    <input type="hidden" asp-for="Actividadd_Id" />
+    <form asp-action="Editar" method="post" class="actividad-form">
+        <input type="hidden" asp-for="Actividadd_Id" />
 
-    <div class="form-group">
-        <label asp-for="Titulo"></label>
-        <input asp-for="Titulo" class="form-control" />
-        <span asp-validation-for="Titulo" class="text-danger"></span>
-    </div>
+        <div class="form-group mb-3">
+            <label asp-for="Titulo" class="form-label"></label>
+            <input asp-for="Titulo" class="form-control actividad-input" />
+            <span asp-validation-for="Titulo" class="text-danger"></span>
+        </div>
 
-    <div class="form-group">
-        <label asp-for="Descripcion"></label>
-        <textarea asp-for="Descripcion" class="form-control"></textarea>
-    </div>
+        <div class="form-group mb-3">
+            <label asp-for="Descripcion" class="form-label"></label>
+            <textarea asp-for="Descripcion" class="form-control actividad-input" rows="3"></textarea>
+        </div>
 
-    <div class="form-group">
-        <label asp-for="FechaInicio"></label>
-        <input asp-for="FechaInicio" type="datetime-local" class="form-control" />
-    </div>
+        <div class="row">
+            <div class="col-md-6 mb-3">
+                <label asp-for="FechaInicio" class="form-label"></label>
+                <input asp-for="FechaInicio" type="datetime-local" class="form-control actividad-input" />
+            </div>
 
-    <div class="form-group">
-        <label asp-for="FechaFin"></label>
-        <input asp-for="FechaFin" type="datetime-local" class="form-control" />
-    </div>
+            <div class="col-md-6 mb-3">
+                <label asp-for="FechaFin" class="form-label"></label>
+                <input asp-for="FechaFin" type="datetime-local" class="form-control actividad-input" />
+            </div>
+        </div>
 
-    <div class="form-group form-check">
-        <input asp-for="Notificar" class="form-check-input" />
-        <label asp-for="Notificar"></label>
-    </div>
+        <div class="form-check mb-4">
+            <input asp-for="Notificar" class="form-check-input actividad-check" />
+            <label asp-for="Notificar" class="form-check-label ms-1"></label>
+        </div>
 
-    <button type="submit" class="btn btn-primary mt-3">Guardar</button>
-</form>
+        <button type="submit" class="btn btn-primary btn-actividad w-100">
+            Guardar actividad
+        </button>
 
-<form asp-action="Eliminar" method="post">
-    <input type="hidden" asp-for="Actividadd_Id" />
+    </form>
+    <form asp-action="Eliminar" method="post">
+        <input type="hidden" asp-for="Actividadd_Id" />
 
-    <button type="submit" class="btn btn-primary mt-3">Borrar</button>
-</form>
+        <button type="submit" class="btn btn-danger mt-3">Borrar</button>
+    </form>
+</div>

@@ -20,5 +20,6 @@ namespace StudyTrack.Models.ViewModels
         public DateTime FechaFin { get; set; }
 
         public bool Notificar { get; set; }
+
     }
 }

@@ -12,6 +12,13 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlServer(connectionString));
 builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 
+builder.Services.Configure<EmailSettings>(
+    builder.Configuration.GetSection("EmailSettings"));
+
+builder.Services.AddTransient<IEmailService, EmailService>();
+
+builder.Services.AddHostedService<NotificationBackgroundService>();
+
 builder.Services.AddControllersWithViews();
 // Identity
 builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
