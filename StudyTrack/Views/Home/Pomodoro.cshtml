@@ -2,60 +2,227 @@
     ViewData["Title"] = "Pomodoro Timer";
 }
 
-<div class="text-center">
-    <h1 class="display-4">🍅 POMODORO TIMER 🍅</h1>
-    <p class="lead">Mantén tu enfoque con la técnica Pomodoro de 25 minutos</p>
-</div>
+<style>
+    .pomodoro-container {
+        max-width: 1000px;
+        margin: 0 auto;
+        padding: 20px;
+    }
 
-<div class="container mt-5">
-    <div class="row justify-content-center">
-        <div class="col-md-8">
-            <div class="card shadow-lg">
-                <div class="card-body text-center p-5">
-                    <div id="timer-display" class="display-1 fw-bold mb-4" style="font-size: 5rem; color: #dc3545;">
-                        25:00
-                    </div>
-                    
-                    <div id="session-info" class="mb-4">
-                        <h4 id="session-type" class="text-muted">Sesión de Trabajo</h4>
-                        <p class="text-muted">Sesión <span id="session-count">1</span></p>
-                    </div>
+    .pomodoro-header {
+        text-align: center;
+        margin-bottom: 30px;
+        padding-bottom: 20px;
+        border-bottom: 3px solid transparent;
+        border-image: linear-gradient(135deg, #667eea 0%, #764ba2 100%) 1;
+    }
 
-                    <div class="btn-group mb-3" role="group">
-                        <button id="start-btn" class="btn btn-success btn-lg px-5">
-                            <i class="bi bi-play-fill"></i> Iniciar
-                        </button>
-                        <button id="pause-btn" class="btn btn-warning btn-lg px-5" disabled>
-                            <i class="bi bi-pause-fill"></i> Pausar
-                        </button>
-                        <button id="reset-btn" class="btn btn-danger btn-lg px-5">
-                            <i class="bi bi-arrow-clockwise"></i> Reiniciar
-                        </button>
-                    </div>
+    .pomodoro-header h1 {
+        font-size: 2.5rem;
+        font-weight: 700;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        margin-bottom: 10px;
+    }
 
-                    <div class="progress" style="height: 30px;">
-                        <div id="progress-bar" class="progress-bar progress-bar-striped bg-success" 
-                             role="progressbar" style="width: 0%">
-                        </div>
-                    </div>
+    .pomodoro-header p {
+        color: #6c757d;
+        font-size: 1.1rem;
+    }
 
-                    <div class="mt-4">
-                        <small class="text-muted">
-                            ⏰ 25 min trabajo · ☕ 5 min descanso · 🎯 Después de 4 sesiones: 15 min descanso
-                        </small>
-                    </div>
-                </div>
-            </div>
+    .pomodoro-card {
+        background: white;
+        padding: 40px;
+        border-radius: 15px;
+        box-shadow: 0 8px 30px rgba(102, 126, 234, 0.15);
+        text-align: center;
+    }
 
-            <div class="alert alert-info mt-4" role="alert">
-                <h5 class="alert-heading">💡 ¿Qué es la técnica Pomodoro?</h5>
-                <p class="mb-0">
-                    La técnica Pomodoro es un método de gestión del tiempo que usa intervalos de 25 minutos 
-                    de trabajo concentrado, seguidos de breves descansos. Esto ayuda a mantener la concentración 
-                    y prevenir el agotamiento mental.
-                </p>
-            </div>
+    #timer-display {
+        font-size: 5rem;
+        font-weight: 700;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        margin-bottom: 20px;
+        line-height: 1;
+    }
+
+    #session-info {
+        margin-bottom: 30px;
+    }
+
+    #session-info h4 {
+        font-size: 1.3rem;
+        font-weight: 600;
+        color: #495057;
+        margin-bottom: 8px;
+    }
+
+    #session-info p {
+        font-size: 1rem;
+        color: #6c757d;
+        margin: 0;
+    }
+
+    .pomodoro-controls {
+        display: flex;
+        justify-content: center;
+        gap: 15px;
+        margin-bottom: 30px;
+        flex-wrap: wrap;
+    }
+
+    .pomodoro-controls .btn {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border: none;
+        color: white;
+        padding: 12px 32px;
+        font-weight: 600;
+        font-size: 1rem;
+        border-radius: 10px;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .pomodoro-controls .btn:hover:not(:disabled) {
+        transform: translateY(-3px);
+        box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+    }
+
+    .pomodoro-controls .btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+        transform: none;
+    }
+
+    .pomodoro-controls .btn i {
+        font-size: 1.1rem;
+    }
+
+    .pomodoro-progress {
+        width: 100%;
+        height: 40px;
+        background: #f1f3f5;
+        border-radius: 20px;
+        overflow: hidden;
+        box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
+        margin-bottom: 25px;
+    }
+
+    .pomodoro-progress-bar {
+        height: 100%;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 20px;
+        transition: width 0.3s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-weight: 600;
+        font-size: 0.9rem;
+        box-shadow: 0 2px 8px rgba(102, 126, 234, 0.4);
+    }
+
+    .session-info-text {
+        color: #6c757d;
+        font-size: 0.95rem;
+        line-height: 1.6;
+    }
+
+    .info-card {
+        background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
+        border: 2px solid rgba(102, 126, 234, 0.2);
+        border-radius: 15px;
+        padding: 25px;
+        margin-top: 30px;
+    }
+
+    .info-card h5 {
+        color: #667eea;
+        font-weight: 700;
+        font-size: 1.3rem;
+        margin-bottom: 15px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .info-card p {
+        color: #495057;
+        line-height: 1.7;
+        margin: 0;
+    }
+
+    /* Responsive */
+    @@media (max-width: 768px) {
+        .pomodoro-header h1 {
+            font-size: 2rem;
+        }
+
+        #timer-display {
+            font-size: 3.5rem;
+        }
+
+        .pomodoro-controls {
+            flex-direction: column;
+        }
+
+        .pomodoro-controls .btn {
+            width: 100%;
+            justify-content: center;
+        }
+    }
+</style>
+
+<div class="pomodoro-container">
+    <div class="pomodoro-header">
+        <h1>🍅 POMODORO TIMER 🍅</h1>
+        <p>Mantén tu enfoque con la técnica Pomodoro de 25 minutos</p>
+    </div>
+
+    <div class="pomodoro-card">
+        <div id="timer-display">25:00</div>
+        
+        <div id="session-info">
+            <h4 id="session-type">Sesión de Trabajo</h4>
+            <p>Sesión <span id="session-count">1</span></p>
         </div>
+
+        <div class="pomodoro-controls">
+            <button id="start-btn" class="btn">
+                <i class="fas fa-play"></i> Iniciar
+            </button>
+            <button id="pause-btn" class="btn" disabled>
+                <i class="fas fa-pause"></i> Pausar
+            </button>
+            <button id="reset-btn" class="btn">
+                <i class="fas fa-redo"></i> Reiniciar
+            </button>
+        </div>
+
+        <div class="pomodoro-progress">
+            <div id="progress-bar" class="pomodoro-progress-bar" style="width: 0%"></div>
+        </div>
+
+        <div class="session-info-text">
+            ⏰ 25 min trabajo · ☕ 5 min descanso · 🎯 15 min descanso largo (cada 4 sesiones)
+        </div>
+    </div>
+
+    <div class="info-card">
+        <h5><i class="fas fa-lightbulb"></i> ¿Qué es la técnica Pomodoro?</h5>
+        <p>
+            La técnica Pomodoro es un método de gestión del tiempo que usa intervalos de 25 minutos 
+            de trabajo concentrado, seguidos de breves descansos. Esto ayuda a mantener la concentración 
+            y prevenir el agotamiento mental.
+        </p>
     </div>
 </div>
 
@@ -114,7 +281,7 @@
                 clearInterval(timer);
                 startBtn.disabled = false;
                 pauseBtn.disabled = true;
-                startBtn.innerHTML = '<i class="bi bi-play-fill"></i> Continuar';
+                startBtn.innerHTML = '<i class="fas fa-play"></i> Continuar';
             }
         }
 
@@ -128,13 +295,10 @@
             
             startBtn.disabled = false;
             pauseBtn.disabled = true;
-            startBtn.innerHTML = '<i class="bi bi-play-fill"></i> Iniciar';
+            startBtn.innerHTML = '<i class="fas fa-play"></i> Iniciar';
             
             sessionType.textContent = 'Sesión de Trabajo';
-            sessionType.className = 'text-muted';
             sessionCountDisplay.textContent = sessionCount;
-            timerDisplay.style.color = '#dc3545';
-            progressBar.className = 'progress-bar progress-bar-striped bg-success';
             progressBar.style.width = '0%';
             
             updateDisplay();
@@ -157,16 +321,10 @@
                     // Descanso largo después de 4 sesiones
                     timeLeft = LONG_BREAK;
                     sessionType.textContent = '🎉 Descanso Largo';
-                    sessionType.className = 'text-primary';
-                    timerDisplay.style.color = '#0d6efd';
-                    progressBar.className = 'progress-bar progress-bar-striped bg-primary';
                 } else {
                     // Descanso corto
                     timeLeft = SHORT_BREAK;
                     sessionType.textContent = '☕ Descanso Corto';
-                    sessionType.className = 'text-info';
-                    timerDisplay.style.color = '#0dcaf0';
-                    progressBar.className = 'progress-bar progress-bar-striped bg-info';
                 }
                 isWorkSession = false;
             } else {
@@ -174,15 +332,12 @@
                 timeLeft = WORK_TIME;
                 isWorkSession = true;
                 sessionType.textContent = '💼 Sesión de Trabajo';
-                sessionType.className = 'text-muted';
-                timerDisplay.style.color = '#dc3545';
-                progressBar.className = 'progress-bar progress-bar-striped bg-success';
             }
             
             updateDisplay();
             startBtn.disabled = false;
             pauseBtn.disabled = true;
-            startBtn.innerHTML = '<i class="bi bi-play-fill"></i> Iniciar';
+            startBtn.innerHTML = '<i class="fas fa-play"></i> Iniciar';
             
             // Mostrar notificación
             showNotification();

@@ -18,10 +18,11 @@
     }
 
     .pomodoro-section {
-        background: #f8f9fa;
-        border-radius: 10px;
-        padding: 20px;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        background: white;
+        border-radius: 15px;
+        padding: 25px;
+        box-shadow: 0 8px 30px rgba(102, 126, 234, 0.15);
+        border: 1px solid rgba(102, 126, 234, 0.1);
     }
 
     .pomodoro-horizontal {
@@ -70,9 +71,10 @@
         display: flex;
         flex-direction: column;
         background: #ffffff;
-        border-radius: 10px;
+        border-radius: 15px;
         padding: 20px;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        box-shadow: 0 8px 30px rgba(102, 126, 234, 0.15);
+        border: 1px solid rgba(102, 126, 234, 0.1);
         min-width: 0;
     }
 
@@ -81,16 +83,20 @@
         display: flex;
         flex-direction: column;
         background: #ffffff;
-        border-radius: 10px;
+        border-radius: 15px;
         padding: 20px;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        box-shadow: 0 8px 30px rgba(102, 126, 234, 0.15);
+        border: 1px solid rgba(102, 126, 234, 0.1);
         min-width: 0;
     }
 
     #timer-display {
         font-size: 3.5rem !important;
-        font-weight: bold;
-        color: #dc3545;
+        font-weight: 700;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
         margin: 0;
         line-height: 1;
     }
@@ -177,9 +183,11 @@
     }
 
     .file-tab.active {
-        background: white;
+        background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
         border-bottom-color: white;
+        border-color: #667eea;
         font-weight: 600;
+        color: #667eea;
     }
 
     .file-tab .close-tab {
@@ -247,13 +255,18 @@
     .section-header {
         margin-bottom: 20px;
         padding-bottom: 15px;
-        border-bottom: 3px solid #dee2e6;
+        border-bottom: 3px solid transparent;
+        border-image: linear-gradient(135deg, #667eea 0%, #764ba2 100%) 1;
     }
 
     .section-header h2 {
         margin: 0;
         font-size: 1.75rem;
-        font-weight: 600;
+        font-weight: 700;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
     }
 
     .notes-content {
@@ -285,7 +298,7 @@
     .notes-textarea:focus {
         outline: none;
         border-color: #667eea;
-        box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+        box-shadow: 0 0 0 0.25rem rgba(102, 126, 234, 0.25), 0 4px 15px rgba(102, 126, 234, 0.1);
     }
 
     .btn-download-notes {
@@ -299,9 +312,14 @@
     }
 
     .btn-download-notes:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
+        transform: translateY(-3px);
+        box-shadow: 0 8px 25px rgba(102, 126, 234, 0.5);
         color: white;
+    }
+
+    .btn-download-notes:active {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
     }
 
     .placeholder-content {
@@ -321,16 +339,26 @@
     }
 
     .pomodoro-controls .btn {
-        padding: 8px 16px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border: none;
+        color: white;
+        padding: 8px 20px;
         font-size: 0.85rem;
-        font-weight: 500;
-        opacity: 0.85;
-        transition: all 0.2s ease;
+        font-weight: 600;
+        border-radius: 8px;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
     }
 
-    .pomodoro-controls .btn:hover {
-        opacity: 1;
-        transform: translateY(-1px);
+    .pomodoro-controls .btn:hover:not(:disabled) {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+    }
+
+    .pomodoro-controls .btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+        transform: none;
     }
 
     .progress-container {
@@ -340,12 +368,16 @@
     .progress {
         height: 40px !important;
         border-radius: 20px;
+        background: #f1f3f5;
+        box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
     }
 
     .progress-bar {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         border-radius: 20px;
         font-size: 0.95rem;
         font-weight: 600;
+        box-shadow: 0 2px 8px rgba(102, 126, 234, 0.4);
     }
 
     .session-info-compact {
@@ -430,7 +462,7 @@
         <!-- Visor de Archivos (Izquierda) -->
         <div class="files-section">
             <div class="section-header">
-                <h2>📁 Visor de Archivos</h2>
+                <h2>ARCHIVOS</h2>
             </div>
             <div class="file-viewer-content">
                 <!-- Drop Zone -->
@@ -460,7 +492,7 @@
         <!-- Sección de Notas (Derecha) -->
         <div class="notes-section">
             <div class="section-header">
-                <h2>📝 Notas</h2>
+                <h2>NOTAS</h2>
             </div>
             <div class="notes-content">
                 <textarea class="notes-textarea" id="notesTextarea" placeholder="Escribe tus notas aquí..."></textarea>

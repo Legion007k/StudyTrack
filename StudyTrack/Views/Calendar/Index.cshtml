@@ -4,12 +4,225 @@
     ViewData["Title"] = "Calendario";
 }
 
-<h2>Tu Calendario</h2>
-
 <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.css" rel="stylesheet" />
 <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js"></script>
 
-<div id="calendar"></div>
+<style>
+    .calendar-container {
+        max-width: 1400px;
+        margin: 0 auto;
+        padding: 20px;
+    }
+
+    .calendar-header {
+        text-align: center;
+        margin-bottom: 30px;
+        padding-bottom: 20px;
+        border-bottom: 3px solid transparent;
+        border-image: linear-gradient(135deg, #667eea 0%, #764ba2 100%) 1;
+    }
+
+    .calendar-header h1 {
+        font-size: 2.5rem;
+        font-weight: 700;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        margin-bottom: 10px;
+    }
+
+    .calendar-header p {
+        color: #6c757d;
+        font-size: 1.1rem;
+    }
+
+    /* FullCalendar Custom Styles */
+    #calendar {
+        background: white;
+        padding: 20px;
+        border-radius: 15px;
+        box-shadow: 0 8px 30px rgba(102, 126, 234, 0.15);
+    }
+
+    /* Header del calendario */
+    .fc .fc-toolbar-title {
+        font-size: 1.75rem !important;
+        font-weight: 700 !important;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+    }
+
+    /* Botones del calendario */
+    .fc .fc-button {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+        border: none !important;
+        padding: 8px 16px !important;
+        font-weight: 600 !important;
+        text-transform: uppercase;
+        font-size: 0.85rem !important;
+        border-radius: 8px !important;
+        transition: all 0.3s ease !important;
+        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3) !important;
+    }
+
+    .fc .fc-button:hover {
+        transform: translateY(-2px) !important;
+        box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4) !important;
+    }
+
+    .fc .fc-button:active,
+    .fc .fc-button-active {
+        background: linear-gradient(135deg, #764ba2 0%, #667eea 100%) !important;
+        box-shadow: 0 2px 10px rgba(102, 126, 234, 0.3) !important;
+    }
+
+    .fc .fc-button:disabled {
+        opacity: 0.5 !important;
+        cursor: not-allowed !important;
+    }
+
+    /* Días de la semana */
+    .fc .fc-col-header-cell {
+        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+        padding: 15px 5px !important;
+        font-weight: 700 !important;
+        color: #667eea !important;
+        text-transform: uppercase;
+        font-size: 0.85rem !important;
+        border: none !important;
+    }
+
+    /* Celdas del calendario */
+    .fc .fc-daygrid-day {
+        transition: all 0.3s ease;
+    }
+
+    .fc .fc-daygrid-day:hover {
+        background: linear-gradient(135deg, rgba(102, 126, 234, 0.05) 0%, rgba(118, 75, 162, 0.05) 100%);
+    }
+
+    .fc .fc-daygrid-day-number {
+        color: #495057;
+        font-weight: 600;
+        padding: 8px;
+        font-size: 0.95rem;
+    }
+
+    .fc .fc-day-today {
+        background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%) !important;
+        border: 2px solid #667eea !important;
+    }
+
+    .fc .fc-day-today .fc-daygrid-day-number {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white !important;
+        border-radius: 50%;
+        width: 32px;
+        height: 32px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 700;
+    }
+
+    /* Eventos */
+    .fc-event {
+        border: none !important;
+        border-radius: 6px !important;
+        padding: 4px 8px !important;
+        font-weight: 600 !important;
+        font-size: 0.85rem !important;
+        cursor: pointer !important;
+        transition: all 0.2s ease !important;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1) !important;
+    }
+
+    .fc-event:hover {
+        transform: translateY(-2px) !important;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+    }
+
+    .fc-event-title {
+        font-weight: 600 !important;
+    }
+
+    /* Líneas del grid */
+    .fc .fc-scrollgrid {
+        border-color: #e9ecef !important;
+    }
+
+    .fc th,
+    .fc td {
+        border-color: #e9ecef !important;
+    }
+
+    /* Botón de añadir actividad */
+    .btn-add-activity {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border: none;
+        color: white;
+        padding: 14px 32px;
+        font-weight: 600;
+        font-size: 1.1rem;
+        border-radius: 10px;
+        transition: all 0.3s ease;
+        box-shadow: 0 6px 20px rgba(102, 126, 234, 0.3);
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        margin-top: 30px;
+    }
+
+    .btn-add-activity:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+        color: white;
+    }
+
+    .btn-add-activity i {
+        font-size: 1.2rem;
+    }
+
+    /* Responsive */
+    @@media (max-width: 768px) {
+        .calendar-header h1 {
+            font-size: 2rem;
+        }
+
+        .fc .fc-toolbar {
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .fc .fc-toolbar-title {
+            font-size: 1.4rem !important;
+        }
+
+        .fc .fc-button {
+            font-size: 0.75rem !important;
+            padding: 6px 12px !important;
+        }
+    }
+</style>
+
+<div class="calendar-container">
+    <div class="calendar-header">
+        <h1>CALENDARIO</h1>
+        <p>Organiza y gestiona todas tus actividades académicas</p>
+    </div>
+
+    <div id="calendar"></div>
+
+    <div class="text-center">
+        <a class="btn-add-activity" href="/Calendar/Crear">
+            <i class="fas fa-plus-circle"></i>
+            Añadir Nueva Actividad
+        </a>
+    </div>
+</div>
 
 <script>
     document.addEventListener("DOMContentLoaded", function () {
@@ -40,11 +253,23 @@
             events: actividades,
             eventClick: function(info) {
                 window.location.href = "/Calendar/Editar/" + info.event.id;
+            },
+            locale: 'es',
+            buttonText: {
+                today: 'Hoy',
+                month: 'Mes',
+                week: 'Semana',
+                day: 'Día'
+            },
+            dayHeaderFormat: { weekday: 'short' },
+            height: 'auto',
+            eventTimeFormat: {
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: false
             }
         });
 
         calendar.render();
     });
 </script>
-
-<a class="btn btn-primary mt-4" href="/Calendar/Crear">Añadir Actividad</a>
