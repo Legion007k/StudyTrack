@@ -1,0 +1,39 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UserSecretsId>aspnet-StudyTrack-200e1137-d33f-423e-ac27-d72705d3a3c6</UserSecretsId>
+  </PropertyGroup>
+
+  <!--
+    Las capas comparten ensamblado pero deben poder extraerse a proyectos separados.
+    Solo se conservan los usings implicitos de System.*: asi cada archivo declara
+    explicitamente de que infraestructura depende, igual que en una biblioteca de clases.
+  -->
+  <ItemGroup>
+    <Using Remove="Microsoft.AspNetCore.Builder" />
+    <Using Remove="Microsoft.AspNetCore.Hosting" />
+    <Using Remove="Microsoft.AspNetCore.Http" />
+    <Using Remove="Microsoft.AspNetCore.Routing" />
+    <Using Remove="Microsoft.Extensions.Configuration" />
+    <Using Remove="Microsoft.Extensions.DependencyInjection" />
+    <Using Remove="Microsoft.Extensions.Hosting" />
+    <Using Remove="Microsoft.Extensions.Logging" />
+    <Using Remove="System.Net.Http.Json" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="FluentValidation" Version="12.1.1" />
+    <PackageReference Include="FluentValidation.DependencyInjectionExtensions" Version="12.1.1" />
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.3" />
+    <!-- Npgsql trae Relational 10.0.4; se fija la misma version que Design para no mezclar versiones de EF Core. -->
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="10.0.12" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.12">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+
+</Project>
