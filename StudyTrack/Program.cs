@@ -1,56 +1,37 @@
-﻿using Microsoft.AspNetCore.Identity;
+using System.Text.Json.Serialization;
 using Microsoft.EntityFrameworkCore;
-using StudyTrack.Models;
+using Scalar.AspNetCore;
 using StudyTrack.Data;
-using System;
+using StudyTrack.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
-var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
+    ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseSqlServer(connectionString));
+    options.UseNpgsql(connectionString, npgsql => npgsql.EnableRetryOnFailure(5)));
 builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 
-builder.Services.Configure<EmailSettings>(
-    builder.Configuration.GetSection("EmailSettings"));
+// El motor no guarda estado: las reglas son constantes, asi que una sola instancia basta.
+builder.Services.AddSingleton<MotorDeReglas>();
 
-builder.Services.AddTransient<IEmailService, EmailService>();
+builder.Services.AddControllersWithViews()
+    .AddJsonOptions(options =>
+    {
+        // Los tipos de evento viajan como "Examen", no como 1.
+        options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
+    });
 
-builder.Services.AddHostedService<NotificationBackgroundService>();
-
-builder.Services.AddControllersWithViews();
-// Identity
-builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
-{
-    options.Password.RequireDigit = false;
-    options.Password.RequiredLength = 6;
-    options.Password.RequireNonAlphanumeric = false;
-    options.Password.RequireUppercase = false;
-    options.Password.RequireLowercase = false;
-})
-    .AddEntityFrameworkStores<ApplicationDbContext>()
-    .AddDefaultTokenProviders()
-    .AddDefaultUI();
-
-builder.Services.ConfigureApplicationCookie(options =>
-{
-    options.LoginPath = "/Identity/Account/Login";
-    options.LogoutPath = "/Identity/Account/Logout";
-    options.AccessDeniedPath = "/Identity/Account/AccessDenied";
-    options.ExpireTimeSpan = TimeSpan.FromDays(14);
-    options.SlidingExpiration = true;
-});
+builder.Services.AddOpenApi();
 
 var app = builder.Build();
 
-using (var scope = app.Services.CreateScope())
+await using (var scope = app.Services.CreateAsyncScope())
 {
-    var services = scope.ServiceProvider;
-    var context = services.GetRequiredService<ApplicationDbContext>();
-    context.Database.Migrate();
+    var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+    await context.Database.MigrateAsync();
 }
-// Configure the HTTP request pipeline.
+
 if (app.Environment.IsDevelopment())
 {
     app.UseMigrationsEndPoint();
@@ -58,21 +39,22 @@ if (app.Environment.IsDevelopment())
 else
 {
     app.UseExceptionHandler("/Home/Error");
-    // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
     app.UseHsts();
 }
 
-app.UseHttpsRedirection();
-app.UseStaticFiles();
+// Documentacion navegable de la API en /scalar y el JSON en /openapi/v1.json.
+app.MapOpenApi();
+app.MapScalarApiReference();
 
+app.UseHttpsRedirection();
 app.UseRouting();
 
-app.UseAuthentication();
-app.UseAuthorization();
+app.MapStaticAssets();
 
+app.MapControllers();
 app.MapControllerRoute(
     name: "default",
-    pattern: "{controller=Home}/{action=Index}/{id?}");
-app.MapRazorPages();
+    pattern: "{controller=Home}/{action=Index}/{id?}")
+   .WithStaticAssets();
 
 app.Run();

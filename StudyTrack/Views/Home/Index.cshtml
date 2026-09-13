@@ -1,4 +1,4 @@
-﻿@{
+@{
     ViewData["Title"] = "Inicio";
 }
 
@@ -10,24 +10,12 @@
     <div class="container">
         <div class="hero-content-centered">
             <h1 class="hero-title-centered">STUDYTRACK</h1>
-            <p class="hero-subtitle-centered">Organiza tu tiempo y mejora tu productividad</p>
-            
+            <p class="hero-subtitle-centered">Un evento que sabe lo que arrastra consigo</p>
+
             <div class="hero-buttons-centered">
-                <a href="/Home/StudySpace" class="btn btn-primary btn-lg btn-comenzar">
-                    <i class="fas fa-rocket"></i> COMENZAR
+                <a href="/Calendar/Index" class="btn btn-primary btn-lg btn-comenzar">
+                    <i class="fas fa-calendar-alt"></i> ABRIR CALENDARIO
                 </a>
-                
-                @if (User.Identity?.IsAuthenticated != true)
-                {
-                    <div class="auth-buttons">
-                        <a href="/Identity/Account/Register" class="btn btn-outline-primary btn-lg">
-                            <i class="fas fa-user-plus"></i> REGISTRARSE
-                        </a>
-                        <a href="/Identity/Account/Login" class="btn btn-outline-primary btn-lg">
-                            <i class="fas fa-sign-in-alt"></i> INICIAR SESIÓN
-                        </a>
-                    </div>
-                }
             </div>
         </div>
     </div>
@@ -37,34 +25,19 @@
 <section class="features-section py-5 bg-gray-section">
     <div class="container">
         <div class="text-center mb-5">
-            <h2 class="section-title">¿Por qué StudyTrack?</h2>
-            <p class="section-subtitle">Descubre las herramientas que transformarán tu forma de estudiar</p>
+            <h2 class="section-title">¿Qué hace StudyTrack?</h2>
+            <p class="section-subtitle">Agendas un evento y el plan que lo rodea se arma solo</p>
         </div>
         <div class="row g-4">
-            <div class="col-md-4">
-                <div class="feature-card">
-                    <div class="feature-icon bg-primary">
-                        <i class="fas fa-clock fa-2x"></i>
-                    </div>
-                    <h3 class="feature-title">Técnica Pomodoro</h3>
-                    <p class="feature-description">
-                        Mantén tu enfoque con intervalos de 25 minutos de estudio concentrado 
-                        seguidos de descansos estratégicos. Maximiza tu productividad y previene el agotamiento.
-                    </p>
-                    <a href="/Home/Pomodoro" class="feature-link">
-                        Probar Pomodoro <i class="fas fa-arrow-right"></i>
-                    </a>
-                </div>
-            </div>
             <div class="col-md-4">
                 <div class="feature-card">
                     <div class="feature-icon bg-success">
                         <i class="fas fa-calendar-check fa-2x"></i>
                     </div>
-                    <h3 class="feature-title">Calendario Inteligente</h3>
+                    <h3 class="feature-title">Calendario</h3>
                     <p class="feature-description">
-                        Organiza todas tus actividades, tareas y exámenes en un calendario visual e intuitivo. 
-                        Nunca vuelvas a olvidar una fecha importante.
+                        Crea, edita y borra tus actividades sobre un calendario visual.
+                        Todo pasa por la misma API que puedes consumir desde fuera.
                     </p>
                     <a href="/Calendar/Index" class="feature-link">
                         Ver Calendario <i class="fas fa-arrow-right"></i>
@@ -73,16 +46,31 @@
             </div>
             <div class="col-md-4">
                 <div class="feature-card">
-                    <div class="feature-icon bg-info">
-                        <i class="fas fa-book-reader fa-2x"></i>
+                    <div class="feature-icon bg-primary">
+                        <i class="fas fa-sitemap fa-2x"></i>
                     </div>
-                    <h3 class="feature-title">Study Space</h3>
+                    <h3 class="feature-title">Eventos en cascada</h3>
                     <p class="feature-description">
-                        Combina el poder del Pomodoro con tu calendario en una sola vista. 
-                        Todo lo que necesitas para estudiar, en un solo lugar.
+                        Agenda un examen y aparecen solas las sesiones de estudio previas.
+                        Si mueves el examen, las sesiones se mueven con él.
                     </p>
-                    <a href="/Home/StudySpace" class="feature-link">
-                        Explorar Study Space <i class="fas fa-arrow-right"></i>
+                    <a href="/scalar" class="feature-link">
+                        Ver las reglas <i class="fas fa-arrow-right"></i>
+                    </a>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="feature-card">
+                    <div class="feature-icon bg-info">
+                        <i class="fas fa-check-double fa-2x"></i>
+                    </div>
+                    <h3 class="feature-title">Encadenado por avance</h3>
+                    <p class="feature-description">
+                        Marca la primera entrega como cumplida y la siguiente fase se agenda
+                        sola, contando desde el día en que de verdad la terminaste.
+                    </p>
+                    <a href="/Calendar/Index" class="feature-link">
+                        Probarlo <i class="fas fa-arrow-right"></i>
                     </a>
                 </div>
             </div>
