@@ -7,8 +7,9 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using Moq;
 using StudyTrack.Api.Delegates;
 using StudyTrack.Api.Dtos;
+using StudyTrack.Tests.Routes;
 
-namespace StudyTrack.Tests.Routes;
+namespace StudyTrack.Tests.Middleware;
 
 public class ValidationMiddlewareTests : StudyTrackApiTests
 {
