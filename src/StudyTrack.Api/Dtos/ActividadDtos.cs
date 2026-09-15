@@ -38,3 +38,6 @@ public record UpdateActividadDto
     public bool Completada { get; init; }
     public string? ActividadPadreId { get; init; }
 }
+//Domain Driven Design (DDD) is an approach to software development that emphasizes the importance of understanding
+//the business domain and modeling it in code. In DDD, the focus is on creating a rich domain model that captures the essential
+//concepts and behaviors of the business domain, rather than just focusing on data storage or user interface concerns.

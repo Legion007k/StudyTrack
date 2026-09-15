@@ -6,7 +6,8 @@ using StudyTrack.Api.Dtos;
 using StudyTrack.Api.Extensions;
 
 namespace StudyTrack.Api.Routes;
-
+//nuevo endpoint de calendario para organizacion de actividades.
+//tabla de user id que pueda corroborar la autorizacion de la actividad y que pueda ser compartida con otros usuarios.
 public static class ActividadRoutes
 {
     private const string Ruta = "/actividades";

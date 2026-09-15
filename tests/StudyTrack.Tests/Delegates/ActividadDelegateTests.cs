@@ -8,7 +8,7 @@ using StudyTrack.Api.Repositories;
 using StudyTrack.Tests.Builders;
 
 namespace StudyTrack.Tests.Delegates;
-
+//Funcion verify Mocks
 public class ActividadDelegateTests
 {
     private static readonly DateTime Ahora = ActividadBuilder.FechaBase;

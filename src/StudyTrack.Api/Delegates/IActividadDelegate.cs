@@ -15,5 +15,6 @@ public interface IActividadDelegate
 
     Task<ActividadDto> UpdateAsync(string id, UpdateActividadDto dto, CancellationToken cancellationToken = default);
 
-    Task DeleteAsync(string id, CancellationToken cancellationToken = default);
+    Task DeleteAsync(string id, CancellationToken cancellationToken = default); 
+    //tener un soft delete para que no se pierdan los datos de las actividades y puedan ser recuperadas en caso de error.
 }
