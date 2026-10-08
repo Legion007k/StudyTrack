@@ -29,6 +29,7 @@ public record CreateActividadDto
 }
 
 /// <summary>Cuerpo de PUT /actividades/{actividadId}. Reemplaza todos los campos editables.</summary>
+/// comentario de prueba
 public record UpdateActividadDto
 {
     public string Titulo { get; init; } = string.Empty;
