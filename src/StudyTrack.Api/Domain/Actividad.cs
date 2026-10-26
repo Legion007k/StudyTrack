@@ -41,12 +41,20 @@ public class Actividad
     /// <summary>true si la creo el sistema en vez del usuario.</summary>
     public bool GeneradaAutomaticamente { get; set; }
 
+    /// <summary>Indica si la actividad fue eliminada de forma logica (soft delete).</summary>
+    public bool Eliminada { get; set; }
+
+    /// <summary>Dia y hora en que se elimino logicamente la actividad. La fija el servidor.</summary>
+    public DateTime? FechaEliminacion { get; set; }
+
     /// <summary>Actividad de la que cuelga. Null si es una actividad raiz.</summary>
     public string? ActividadPadreId { get; set; }
 
     public Actividad? ActividadPadre { get; set; }
 
     public ICollection<Actividad> ActividadesHijas { get; set; } = new List<Actividad>();
+
+    public ICollection<ActividadCompartida> Colaboradores { get; set; } = new List<ActividadCompartida>();
 
     /// <summary>
     /// Niveles de subactividades que admite un arbol cuya raiz es de este tipo.
@@ -84,6 +92,45 @@ public class Actividad
     {
         Completada = false;
         FechaCompletada = null;
+    }
+
+    /// <summary>Marca la actividad como eliminada logicamente. Conserva la fecha si ya estaba eliminada.</summary>
+    public void MarcarEliminada(DateTime ahora)
+    {
+        if (Eliminada)
+            return;
+
+        Eliminada = true;
+        FechaEliminacion = ahora;
+    }
+
+    /// <summary>Restaura una actividad que fue eliminada logicamente.</summary>
+    public void Restaurar()
+    {
+        Eliminada = false;
+        FechaEliminacion = null;
+    }
+
+    /// <summary>Indica si el usuario es el dueno de la actividad.</summary>
+    public bool EsPropietario(string userId) => UserId == userId;
+
+    /// <summary>Indica si el usuario tiene autorizacion para ver o colaborar en la actividad.</summary>
+    public bool EsAccesiblePor(string userId) =>
+        UserId == userId || Colaboradores.Any(c => c.UsuarioId == userId);
+
+    /// <summary>Comparte la actividad con otro usuario si no ha sido compartida previamente.</summary>
+    public bool CompartirCon(string usuarioId, DateTime ahora)
+    {
+        if (usuarioId == UserId || Colaboradores.Any(c => c.UsuarioId == usuarioId))
+            return false;
+
+        Colaboradores.Add(new ActividadCompartida
+        {
+            ActividadId = Id,
+            UsuarioId = usuarioId,
+            FechaCompartida = ahora
+        });
+        return true;
     }
 
     /// <summary>Niveles de subactividades por debajo de esta. Una actividad sin hijas tiene altura 0.</summary>

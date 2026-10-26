@@ -28,6 +28,11 @@ public static class ProblemDetailsResponses
             "https://tools.ietf.org/html/rfc7231#section-6.5.4", "Not Found", StatusCodes.Status404NotFound,
             Detail: detail));
 
+    public static IResult Forbidden(string detail = "No tiene autorizacion para realizar esta accion sobre la actividad.") =>
+        Crear(new ErrorResponse(
+            "https://tools.ietf.org/html/rfc7231#section-6.5.3", "Forbidden", StatusCodes.Status403Forbidden,
+            Detail: detail));
+
     public static IResult UnsupportedMediaType() =>
         Crear(new ErrorResponse(
             "https://tools.ietf.org/html/rfc7231#section-6.5.13", "Unsupported Media Type", StatusCodes.Status415UnsupportedMediaType,

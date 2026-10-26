@@ -64,6 +64,48 @@ public class ActividadRoutesTests : StudyTrackApiTests
         Assert.Equal("hija", Assert.Single(actividades[0].ActividadesHijas).Id);
     }
 
+    // ---------- GET /actividades/calendario ----------
+
+    [Fact]
+    public async Task GetCalendario_SinParametros_Devuelve400()
+    {
+        var respuesta = await Client.GetAsync("/actividades/calendario");
+
+        Assert.Equal(HttpStatusCode.BadRequest, respuesta.StatusCode);
+    }
+
+    [Fact]
+    public async Task GetCalendario_RangoInvertido_Devuelve422()
+    {
+        var desde = Uri.EscapeDataString(Ahora.AddDays(10).ToString("o"));
+        var hasta = Uri.EscapeDataString(Ahora.AddDays(2).ToString("o"));
+
+        var respuesta = await Client.GetAsync($"/actividades/calendario?desde={desde}&hasta={hasta}");
+
+        Assert.Equal(HttpStatusCode.UnprocessableEntity, respuesta.StatusCode);
+    }
+
+    [Fact]
+    public async Task GetCalendario_ConRangoValido_Devuelve200ConActividadesFiltradas()
+    {
+        var dentro = new ActividadBuilder().WithId("dentro")
+            .WithFechaInicio(Ahora.AddDays(2)).WithFechaFin(Ahora.AddDays(5)).Build();
+        var fuera = new ActividadBuilder().WithId("fuera")
+            .WithFechaInicio(Ahora.AddDays(20)).WithFechaFin(Ahora.AddDays(25)).Build();
+
+        await SembrarAsync(dentro, fuera);
+
+        var desde = Uri.EscapeDataString(Ahora.ToString("yyyy-MM-dd"));
+        var hasta = Uri.EscapeDataString(Ahora.AddDays(10).ToString("yyyy-MM-dd"));
+
+        var respuesta = await Client.GetAsync($"/actividades/calendario?desde={desde}&hasta={hasta}");
+
+        Assert.Equal(HttpStatusCode.OK, respuesta.StatusCode);
+        var actividades = (await LeerAsync<ActividadDto[]>(respuesta))!;
+        var unica = Assert.Single(actividades);
+        Assert.Equal("dentro", unica.Id);
+    }
+
     // ---------- GET /actividades/{id} ----------
 
     [Fact]
@@ -304,5 +346,85 @@ public class ActividadRoutesTests : StudyTrackApiTests
         var respuesta = await Client.DeleteAsync("/actividades/no-existe");
 
         Assert.Equal(HttpStatusCode.NotFound, respuesta.StatusCode);
+    }
+
+    // ---------- POST /actividades/{id}/compartir y Autorizacion ----------
+
+    [Fact]
+    public async Task Compartir_UsuarioNoDuenio_Devuelve403Forbidden()
+    {
+        var actividad = new ActividadBuilder().WithId("act-compartir-1").WithUserId("usuario-1").Build();
+        await SembrarAsync(actividad);
+
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/actividades/act-compartir-1/compartir")
+        {
+            Content = JsonContent.Create(new { usuarioId = "usuario-2" })
+        };
+        request.Headers.Add("X-User-Id", "usuario-ajeno");
+
+        var respuesta = await Client.SendAsync(request);
+
+        Assert.Equal(HttpStatusCode.Forbidden, respuesta.StatusCode);
+    }
+
+    [Fact]
+    public async Task Compartir_DuenioComparte_Devuelve200Ok()
+    {
+        var actividad = new ActividadBuilder().WithId("act-compartir-2").WithUserId("usuario-1").Build();
+        await SembrarAsync(actividad);
+
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/actividades/act-compartir-2/compartir")
+        {
+            Content = JsonContent.Create(new { usuarioId = "usuario-2" })
+        };
+        request.Headers.Add("X-User-Id", "usuario-1");
+
+        var respuesta = await Client.SendAsync(request);
+
+        Assert.Equal(HttpStatusCode.OK, respuesta.StatusCode);
+    }
+
+    [Fact]
+    public async Task GetById_UsuarioAjeno_Devuelve403Forbidden()
+    {
+        var actividad = new ActividadBuilder().WithId("act-privada").WithUserId("usuario-1").Build();
+        await SembrarAsync(actividad);
+
+        using var request = new HttpRequestMessage(HttpMethod.Get, "/actividades/act-privada");
+        request.Headers.Add("X-User-Id", "usuario-ajeno");
+
+        var respuesta = await Client.SendAsync(request);
+
+        Assert.Equal(HttpStatusCode.Forbidden, respuesta.StatusCode);
+    }
+
+    [Fact]
+    public async Task GetById_Colaborador_Devuelve200Ok()
+    {
+        var actividad = new ActividadBuilder().WithId("act-compartida").WithUserId("usuario-1").Build();
+        actividad.CompartirCon("usuario-colaborador", DateTime.Now);
+        await SembrarAsync(actividad);
+
+        using var request = new HttpRequestMessage(HttpMethod.Get, "/actividades/act-compartida");
+        request.Headers.Add("X-User-Id", "usuario-colaborador");
+
+        var respuesta = await Client.SendAsync(request);
+
+        Assert.Equal(HttpStatusCode.OK, respuesta.StatusCode);
+    }
+
+    [Fact]
+    public async Task Delete_ColaboradorNoDuenio_Devuelve403Forbidden()
+    {
+        var actividad = new ActividadBuilder().WithId("act-no-borrar").WithUserId("usuario-1").Build();
+        actividad.CompartirCon("usuario-colaborador", DateTime.Now);
+        await SembrarAsync(actividad);
+
+        using var request = new HttpRequestMessage(HttpMethod.Delete, "/actividades/act-no-borrar");
+        request.Headers.Add("X-User-Id", "usuario-colaborador");
+
+        var respuesta = await Client.SendAsync(request);
+
+        Assert.Equal(HttpStatusCode.Forbidden, respuesta.StatusCode);
     }
 }

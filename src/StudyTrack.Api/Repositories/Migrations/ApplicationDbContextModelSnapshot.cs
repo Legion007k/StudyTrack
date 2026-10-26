@@ -39,7 +39,13 @@ namespace StudyTrack.Api.Repositories.Migrations
                         .HasMaxLength(2000)
                         .HasColumnType("character varying(2000)");
 
+                    b.Property<bool>("Eliminada")
+                        .HasColumnType("boolean");
+
                     b.Property<DateTime?>("FechaCompletada")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<DateTime?>("FechaEliminacion")
                         .HasColumnType("timestamp without time zone");
 
                     b.Property<DateTime>("FechaFin")
@@ -71,9 +77,51 @@ namespace StudyTrack.Api.Repositories.Migrations
                     b.HasIndex("ActividadPadreId");
 
                     b.HasIndex("UserId", "Titulo", "FechaFin")
-                        .IsUnique();
+                        .IsUnique()
+                        .HasFilter("\"Eliminada\" = false");
 
                     b.ToTable("Actividades", (string)null);
+                });
+
+            modelBuilder.Entity("StudyTrack.Api.Domain.ActividadCompartida", b =>
+                {
+                    b.Property<string>("ActividadId")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("UsuarioId")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<DateTime>("FechaCompartida")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.HasKey("ActividadId", "UsuarioId");
+
+                    b.HasIndex("UsuarioId");
+
+                    b.ToTable("ActividadesCompartidas", (string)null);
+                });
+
+            modelBuilder.Entity("StudyTrack.Api.Domain.Usuario", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("Email")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("Nombre")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("Usuarios", (string)null);
                 });
 
             modelBuilder.Entity("StudyTrack.Api.Domain.Actividad", b =>
@@ -86,9 +134,30 @@ namespace StudyTrack.Api.Repositories.Migrations
                     b.Navigation("ActividadPadre");
                 });
 
+            modelBuilder.Entity("StudyTrack.Api.Domain.ActividadCompartida", b =>
+                {
+                    b.HasOne("StudyTrack.Api.Domain.Actividad", "Actividad")
+                        .WithMany("Colaboradores")
+                        .HasForeignKey("ActividadId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("StudyTrack.Api.Domain.Usuario", "Usuario")
+                        .WithMany()
+                        .HasForeignKey("UsuarioId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Actividad");
+
+                    b.Navigation("Usuario");
+                });
+
             modelBuilder.Entity("StudyTrack.Api.Domain.Actividad", b =>
                 {
                     b.Navigation("ActividadesHijas");
+
+                    b.Navigation("Colaboradores");
                 });
 #pragma warning restore 612, 618
         }

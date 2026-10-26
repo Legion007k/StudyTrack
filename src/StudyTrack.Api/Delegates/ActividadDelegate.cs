@@ -21,10 +21,33 @@ public class ActividadDelegate(IActividadRepository repository, TimeProvider tim
             .ToList();
     }
 
-    public async Task<ActividadDto?> GetByIdAsync(string id, CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<ActividadDto>> GetCalendarioAsync(
+        DateTime desde, DateTime hasta, CancellationToken cancellationToken = default)
+    {
+        if (desde > hasta)
+            throw new BusinessRuleException("rango", "La fecha 'desde' no puede ser posterior a la fecha 'hasta'.");
+
+        var actividades = await repository.GetPorRangoFechasAsync(desde, hasta, cancellationToken);
+
+        var hijasPorPadre = actividades
+            .Where(a => a.ActividadPadreId is not null)
+            .ToLookup(a => a.ActividadPadreId!);
+
+        return OrdenadasParaMostrar(actividades)
+            .Select(act => ToDto(act, a => hijasPorPadre[a.Id], nivel: 0))
+            .ToList();
+    }
+
+    public async Task<ActividadDto?> GetByIdAsync(string id, string? callerUserId = null, CancellationToken cancellationToken = default)
     {
         var actividad = await repository.GetByIdAsync(id, cancellationToken);
-        return actividad is null ? null : ToDto(actividad, a => a.ActividadesHijas, nivel: 0);
+        if (actividad is null)
+            return null;
+
+        if (callerUserId is not null && !actividad.EsAccesiblePor(callerUserId))
+            throw new ForbiddenException("No tiene autorizacion para acceder a esta actividad.");
+
+        return ToDto(actividad, a => a.ActividadesHijas, nivel: 0);
     }
 
     public async Task<string> CreateAsync(CreateActividadDto dto, CancellationToken cancellationToken = default)
@@ -52,10 +75,13 @@ public class ActividadDelegate(IActividadRepository repository, TimeProvider tim
         return actividad.Id;
     }
 
-    public async Task<ActividadDto> UpdateAsync(string id, UpdateActividadDto dto, CancellationToken cancellationToken = default)
+    public async Task<ActividadDto> UpdateAsync(string id, UpdateActividadDto dto, string? callerUserId = null, CancellationToken cancellationToken = default)
     {
         var actividad = await repository.GetByIdAsync(id, cancellationToken)
             ?? throw new NotFoundException($"No existe una actividad con id '{id}'.");
+
+        if (callerUserId is not null && !actividad.EsAccesiblePor(callerUserId))
+            throw new ForbiddenException("No tiene autorizacion para modificar esta actividad.");
 
         actividad.Titulo = dto.Titulo;
         actividad.Descripcion = dto.Descripcion;
@@ -90,10 +116,28 @@ public class ActividadDelegate(IActividadRepository repository, TimeProvider tim
         return ToDto(actividad, a => a.ActividadesHijas, nivel: 0);
     }
 
-    public async Task DeleteAsync(string id, CancellationToken cancellationToken = default)
+    public async Task CompartirAsync(
+        string id, string usuarioIdDestino, string? callerUserId = null, CancellationToken cancellationToken = default)
     {
         var actividad = await repository.GetByIdAsync(id, cancellationToken)
             ?? throw new NotFoundException($"No existe una actividad con id '{id}'.");
+
+        if (callerUserId is not null && !actividad.EsPropietario(callerUserId))
+            throw new ForbiddenException("Solo el propietario puede compartir la actividad con otros usuarios.");
+
+        if (usuarioIdDestino == actividad.UserId)
+            throw new BusinessRuleException("usuarioId", "No se puede compartir la actividad con su propio creador.");
+
+        await repository.CompartirAsync(actividad, usuarioIdDestino, Ahora(), cancellationToken);
+    }
+
+    public async Task DeleteAsync(string id, string? callerUserId = null, CancellationToken cancellationToken = default)
+    {
+        var actividad = await repository.GetByIdAsync(id, cancellationToken)
+            ?? throw new NotFoundException($"No existe una actividad con id '{id}'.");
+
+        if (callerUserId is not null && !actividad.EsPropietario(callerUserId))
+            throw new ForbiddenException("Solo el propietario puede eliminar la actividad.");
 
         // El repositorio recibe la actividad con su subarbol cargado y elimina tambien a las descendientes.
         await repository.DeleteAsync(actividad, cancellationToken);
@@ -180,6 +224,7 @@ public class ActividadDelegate(IActividadRepository repository, TimeProvider tim
             actividad.FechaCompletada,
             actividad.GeneradaAutomaticamente,
             actividad.ActividadPadreId,
-            hijas);
+            hijas,
+            actividad.Colaboradores.Select(c => c.UsuarioId).ToList());
     }
 }

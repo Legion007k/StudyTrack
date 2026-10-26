@@ -25,6 +25,8 @@ public class ActividadTests
         Assert.Equal(TipoActividad.General, actividad.Tipo);
         Assert.False(actividad.Completada);
         Assert.Null(actividad.FechaCompletada);
+        Assert.False(actividad.Eliminada);
+        Assert.Null(actividad.FechaEliminacion);
         Assert.False(actividad.GeneradaAutomaticamente);
         Assert.Null(actividad.ActividadPadreId);
         Assert.Empty(actividad.ActividadesHijas);
@@ -75,6 +77,40 @@ public class ActividadTests
 
         Assert.False(actividad.Completada);
         Assert.Null(actividad.FechaCompletada);
+    }
+
+    [Fact]
+    public void MarcarEliminada_FijaEliminadaYFecha()
+    {
+        var actividad = new ActividadBuilder().Build();
+
+        actividad.MarcarEliminada(Fecha.AddDays(3));
+
+        Assert.True(actividad.Eliminada);
+        Assert.Equal(Fecha.AddDays(3), actividad.FechaEliminacion);
+    }
+
+    [Fact]
+    public void MarcarEliminada_YaEliminada_ConservaLaFechaOriginal()
+    {
+        var actividad = new ActividadBuilder().Build();
+        actividad.MarcarEliminada(Fecha.AddDays(1));
+
+        actividad.MarcarEliminada(Fecha.AddDays(5));
+
+        Assert.Equal(Fecha.AddDays(1), actividad.FechaEliminacion);
+    }
+
+    [Fact]
+    public void Restaurar_LimpiaEliminadaYFecha()
+    {
+        var actividad = new ActividadBuilder().Build();
+        actividad.MarcarEliminada(Fecha.AddDays(1));
+
+        actividad.Restaurar();
+
+        Assert.False(actividad.Eliminada);
+        Assert.Null(actividad.FechaEliminacion);
     }
 
     [Theory]
@@ -158,5 +194,49 @@ public class ActividadTests
         Assert.Equal("padre", hija.ActividadPadreId);
         Assert.Same(padre, hija.ActividadPadre);
         Assert.Contains(hija, padre.ActividadesHijas);
+    }
+
+    [Fact]
+    public void EsPropietario_DevuelveTrueSoloParaElDuenio()
+    {
+        var actividad = new ActividadBuilder().WithUserId("usuario-1").Build();
+
+        Assert.True(actividad.EsPropietario("usuario-1"));
+        Assert.False(actividad.EsPropietario("usuario-2"));
+    }
+
+    [Fact]
+    public void EsAccesiblePor_DevuelveTrueParaDuenioYColaboradores_FalseParaAjeno()
+    {
+        var actividad = new ActividadBuilder().WithUserId("usuario-1").Build();
+        actividad.CompartirCon("usuario-colaborador", Fecha);
+
+        Assert.True(actividad.EsAccesiblePor("usuario-1"));
+        Assert.True(actividad.EsAccesiblePor("usuario-colaborador"));
+        Assert.False(actividad.EsAccesiblePor("usuario-ajeno"));
+    }
+
+    [Fact]
+    public void CompartirCon_AgregaColaborador_SiEsValido()
+    {
+        var actividad = new ActividadBuilder().WithUserId("usuario-1").Build();
+
+        var compartido = actividad.CompartirCon("usuario-2", Fecha);
+
+        Assert.True(compartido);
+        var colaborador = Assert.Single(actividad.Colaboradores);
+        Assert.Equal("usuario-2", colaborador.UsuarioId);
+        Assert.Equal(Fecha, colaborador.FechaCompartida);
+    }
+
+    [Fact]
+    public void CompartirCon_DuenioOYaCompartido_DevuelveFalse()
+    {
+        var actividad = new ActividadBuilder().WithUserId("usuario-1").Build();
+
+        Assert.False(actividad.CompartirCon("usuario-1", Fecha));
+
+        Assert.True(actividad.CompartirCon("usuario-2", Fecha));
+        Assert.False(actividad.CompartirCon("usuario-2", Fecha));
     }
 }

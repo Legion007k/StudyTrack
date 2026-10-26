@@ -7,6 +7,10 @@ public interface IActividadRepository
     /// <summary>Todas las actividades, en una lista plana.</summary>
     Task<IReadOnlyList<Actividad>> GetAllAsync(CancellationToken cancellationToken = default);
 
+    /// <summary>Actividades cuyo periodo de fechas se traslapa con el rango [desde, hasta].</summary>
+    Task<IReadOnlyList<Actividad>> GetPorRangoFechasAsync(
+        DateTime desde, DateTime hasta, CancellationToken cancellationToken = default);
+
     /// <summary>La actividad con su subarbol de hijas cargado, o null si no existe.</summary>
     Task<Actividad?> GetByIdAsync(string id, CancellationToken cancellationToken = default);
 
@@ -17,6 +21,9 @@ public interface IActividadRepository
     Task AddAsync(Actividad actividad, CancellationToken cancellationToken = default);
 
     Task UpdateAsync(Actividad actividad, CancellationToken cancellationToken = default);
+
+    /// <summary>Registra un colaborador para compartir la actividad.</summary>
+    Task CompartirAsync(Actividad actividad, string usuarioId, DateTime ahora, CancellationToken cancellationToken = default);
 
     /// <summary>Elimina la actividad y todas sus descendientes.</summary>
     Task DeleteAsync(Actividad actividad, CancellationToken cancellationToken = default);

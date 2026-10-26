@@ -149,7 +149,49 @@ public class ActividadRepositoryTests
         }
 
         await using var verificacion = NuevoContexto();
+        // Con el filtro global activo, las eliminadas no aparecen
         Assert.Equal(["otra"], await verificacion.Actividades.Select(a => a.Id).ToListAsync());
+
+        // Con IgnoreQueryFilters se comprueba que siguen existiendo fisicamente con Eliminada = true
+        var eliminadas = await verificacion.Actividades
+            .IgnoreQueryFilters()
+            .Where(a => a.Eliminada)
+            .OrderBy(a => a.Id)
+            .ToListAsync();
+
+        Assert.Equal(["hija", "nieta", "raiz"], eliminadas.Select(a => a.Id));
+        Assert.All(eliminadas, a =>
+        {
+            Assert.True(a.Eliminada);
+            Assert.NotNull(a.FechaEliminacion);
+        });
+    }
+
+    [Fact]
+    public async Task GetByIdAsync_ActividadEliminadaLogicamente_DevuelveNull()
+    {
+        var actividad = new ActividadBuilder().WithId("eliminada").Build();
+        actividad.MarcarEliminada(Fecha);
+        await SembrarAsync(actividad);
+
+        await using var context = NuevoContexto();
+        var resultado = await new ActividadRepository(context).GetByIdAsync("eliminada");
+
+        Assert.Null(resultado);
+    }
+
+    [Fact]
+    public async Task GetAllAsync_ActividadesEliminadasLogicamente_LasExcluye()
+    {
+        var activa = new ActividadBuilder().WithId("activa").Build();
+        var eliminada = new ActividadBuilder().WithId("eliminada").Build();
+        eliminada.MarcarEliminada(Fecha);
+        await SembrarAsync(activa, eliminada);
+
+        await using var context = NuevoContexto();
+        var resultado = await new ActividadRepository(context).GetAllAsync();
+
+        Assert.Equal(["activa"], resultado.Select(a => a.Id));
     }
 
     [Fact]
@@ -179,5 +221,55 @@ public class ActividadRepositoryTests
             .ExistsDuplicateAsync(userId, titulo, Fecha.AddDays(diasFechaFin), excludeId);
 
         Assert.False(existe);
+    }
+
+    [Fact]
+    public async Task GetPorRangoFechasAsync_DevuelveActividadesQueSeTraslapanConElRango()
+    {
+        var rangoDesde = Fecha.AddDays(10);
+        var rangoHasta = Fecha.AddDays(20);
+
+        var antes = new ActividadBuilder().WithId("antes")
+            .WithFechaInicio(Fecha).WithFechaFin(Fecha.AddDays(5)).Build();
+
+        var traslapeInicio = new ActividadBuilder().WithId("traslape-inicio")
+            .WithFechaInicio(Fecha.AddDays(5)).WithFechaFin(Fecha.AddDays(15)).Build();
+
+        var adentro = new ActividadBuilder().WithId("adentro")
+            .WithFechaInicio(Fecha.AddDays(12)).WithFechaFin(Fecha.AddDays(18)).Build();
+
+        var traslapeFin = new ActividadBuilder().WithId("traslape-fin")
+            .WithFechaInicio(Fecha.AddDays(15)).WithFechaFin(Fecha.AddDays(25)).Build();
+
+        var despues = new ActividadBuilder().WithId("despues")
+            .WithFechaInicio(Fecha.AddDays(25)).WithFechaFin(Fecha.AddDays(30)).Build();
+
+        await SembrarAsync(antes, traslapeInicio, adentro, traslapeFin, despues);
+
+        await using var context = NuevoContexto();
+        var resultado = await new ActividadRepository(context).GetPorRangoFechasAsync(rangoDesde, rangoHasta);
+
+        Assert.Equal(["traslape-inicio", "adentro", "traslape-fin"], resultado.Select(a => a.Id));
+    }
+
+    [Fact]
+    public async Task GetPorRangoFechasAsync_ExcluyeActividadesEliminadasLogicamente()
+    {
+        var rangoDesde = Fecha.AddDays(10);
+        var rangoHasta = Fecha.AddDays(20);
+
+        var activa = new ActividadBuilder().WithId("activa")
+            .WithFechaInicio(Fecha.AddDays(12)).WithFechaFin(Fecha.AddDays(18)).Build();
+
+        var eliminada = new ActividadBuilder().WithId("eliminada")
+            .WithFechaInicio(Fecha.AddDays(12)).WithFechaFin(Fecha.AddDays(18)).Build();
+        eliminada.MarcarEliminada(Fecha);
+
+        await SembrarAsync(activa, eliminada);
+
+        await using var context = NuevoContexto();
+        var resultado = await new ActividadRepository(context).GetPorRangoFechasAsync(rangoDesde, rangoHasta);
+
+        Assert.Equal(["activa"], resultado.Select(a => a.Id));
     }
 }

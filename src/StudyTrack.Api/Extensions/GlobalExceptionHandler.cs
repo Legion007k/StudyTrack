@@ -18,6 +18,8 @@ public sealed class GlobalExceptionHandler(ILogger<GlobalExceptionHandler> logge
                 ProblemDetailsResponses.ValidationFailed("body", "El cuerpo de la solicitud no es JSON valido o no tiene el formato esperado."),
             NotFoundException notFound =>
                 ProblemDetailsResponses.NotFound(notFound.Message),
+            ForbiddenException forbidden =>
+                ProblemDetailsResponses.Forbidden(forbidden.Message),
             BusinessRuleException reglaDeNegocio =>
                 ProblemDetailsResponses.BusinessRuleViolation(reglaDeNegocio.Errors),
             _ => null
