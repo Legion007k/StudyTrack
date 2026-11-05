@@ -1,0 +1,18 @@
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+name: studytrack
+nodes:
+  - role: control-plane
+    extraPortMappings:
+      - containerPort: 30080
+        hostPort: 8081
+        listenAddress: "127.0.0.1"
+      - containerPort: 30081
+        hostPort: 8082
+        listenAddress: "127.0.0.1"
+      - containerPort: 30030
+        hostPort: 3000
+        listenAddress: "127.0.0.1"
+      - containerPort: 30090
+        hostPort: 9090
+        listenAddress: "127.0.0.1"

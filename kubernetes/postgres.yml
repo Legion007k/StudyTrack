@@ -1,0 +1,64 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: studytrack-db
+  namespace: studytrack
+spec:
+  clusterIP: None
+  selector:
+    app: studytrack-db
+  ports:
+    - name: postgres
+      port: 5432
+      targetPort: 5432
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: studytrack-db
+  namespace: studytrack
+spec:
+  serviceName: studytrack-db
+  replicas: 1
+  selector:
+    matchLabels:
+      app: studytrack-db
+  template:
+    metadata:
+      labels:
+        app: studytrack-db
+    spec:
+      containers:
+        - name: postgres
+          image: docker.io/library/postgres:17.6-alpine3.22
+          ports:
+            - name: postgres
+              containerPort: 5432
+          env:
+            - name: POSTGRES_DB
+              value: studytrack_db
+            - name: POSTGRES_USER
+              value: postgres
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: studytrack-db-credentials
+                  key: POSTGRES_PASSWORD
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
+          readinessProbe:
+            exec:
+              command: ["pg_isready", "-h", "127.0.0.1", "-U", "postgres", "-d", "studytrack_db"]
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/postgresql/data
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 5Gi
