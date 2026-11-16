@@ -71,15 +71,30 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
                 .OnDelete(DeleteBehavior.Cascade);
         });
 
-        // Npgsql mapea DateTime a "timestamp with time zone" por defecto y rechaza cualquier
-        // valor cuyo Kind no sea Utc. Las fechas de StudyTrack son horas de pared del estudiante
-        // ("la entrega es el viernes a las 23:59"), no instantes absolutos, asi que todas las
-        // propiedades DateTime se guardan sin zona horaria.
+        // Configuración de DateTime a UTC:
+        // Todas las propiedades DateTime y DateTime? se persisten como "timestamp with time zone" (timestamptz).
+        // Se configuran ValueConverters para asegurar que tanto al escribir como al leer de PostgreSQL,
+        // el DateTimeKind sea estrictamente Utc, evitando desfases de 7 horas por zonas horarias del cliente o servidor.
+        var utcConverter = new Microsoft.EntityFrameworkCore.Storage.ValueConversion.ValueConverter<DateTime, DateTime>(
+            v => v.Kind == DateTimeKind.Unspecified ? DateTime.SpecifyKind(v, DateTimeKind.Utc) : v.ToUniversalTime(),
+            v => DateTime.SpecifyKind(v, DateTimeKind.Utc));
+
+        var utcNullableConverter = new Microsoft.EntityFrameworkCore.Storage.ValueConversion.ValueConverter<DateTime?, DateTime?>(
+            v => v.HasValue ? (v.Value.Kind == DateTimeKind.Unspecified ? DateTime.SpecifyKind(v.Value, DateTimeKind.Utc) : v.Value.ToUniversalTime()) : v,
+            v => v.HasValue ? DateTime.SpecifyKind(v.Value, DateTimeKind.Utc) : v);
+
         var propiedadesDeFecha = modelBuilder.Model.GetEntityTypes()
             .SelectMany(entidad => entidad.GetProperties())
             .Where(propiedad => propiedad.ClrType == typeof(DateTime) || propiedad.ClrType == typeof(DateTime?));
 
         foreach (var propiedad in propiedadesDeFecha)
-            propiedad.SetColumnType("timestamp without time zone");
+        {
+            if (propiedad.ClrType == typeof(DateTime))
+                propiedad.SetValueConverter(utcConverter);
+            else
+                propiedad.SetValueConverter(utcNullableConverter);
+
+            propiedad.SetColumnType("timestamp with time zone");
+        }
     }
 }

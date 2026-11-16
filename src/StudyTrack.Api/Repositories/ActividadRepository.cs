@@ -12,21 +12,49 @@ public class ActividadRepository(ApplicationDbContext context) : IActividadRepos
     private static readonly string IncludeSubarbol = string.Join(
         ".", Enumerable.Repeat(nameof(Actividad.ActividadesHijas), Actividad.ProfundidadMaximaAbsoluta));
 
-    public async Task<IReadOnlyList<Actividad>> GetAllAsync(CancellationToken cancellationToken = default) =>
-        await context.Actividades
+    public async Task<IReadOnlyList<Actividad>> GetAllAsync(
+        string? userId = null, CancellationToken cancellationToken = default)
+    {
+        var query = context.Actividades
             .AsNoTracking()
+            .Include(a => a.Colaboradores)
+            .AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(userId))
+        {
+            query = query.Where(a =>
+                a.UserId == userId
+                || (a.Colaboradores != null && a.Colaboradores.Any(c => c.UsuarioId == userId))
+                || (a.ActividadPadre != null && (a.ActividadPadre.UserId == userId || (a.ActividadPadre.Colaboradores != null && a.ActividadPadre.Colaboradores.Any(c => c.UsuarioId == userId)))));
+        }
+
+        return await query
             .OrderBy(a => a.FechaInicio)
             .ThenBy(a => a.Id)
             .ToListAsync(cancellationToken);
+    }
 
     public async Task<IReadOnlyList<Actividad>> GetPorRangoFechasAsync(
-        DateTime desde, DateTime hasta, CancellationToken cancellationToken = default) =>
-        await context.Actividades
+        DateTime desde, DateTime hasta, string? userId = null, CancellationToken cancellationToken = default)
+    {
+        var query = context.Actividades
             .AsNoTracking()
-            .Where(a => a.FechaInicio <= hasta && a.FechaFin >= desde)
+            .Include(a => a.Colaboradores)
+            .Where(a => a.FechaInicio <= hasta && a.FechaFin >= desde);
+
+        if (!string.IsNullOrWhiteSpace(userId))
+        {
+            query = query.Where(a =>
+                a.UserId == userId
+                || (a.Colaboradores != null && a.Colaboradores.Any(c => c.UsuarioId == userId))
+                || (a.ActividadPadre != null && (a.ActividadPadre.UserId == userId || (a.ActividadPadre.Colaboradores != null && a.ActividadPadre.Colaboradores.Any(c => c.UsuarioId == userId)))));
+        }
+
+        return await query
             .OrderBy(a => a.FechaInicio)
             .ThenBy(a => a.Id)
             .ToListAsync(cancellationToken);
+    }
 
     public Task<Actividad?> GetByIdAsync(string id, CancellationToken cancellationToken = default) =>
         context.Actividades
@@ -57,6 +85,9 @@ public class ActividadRepository(ApplicationDbContext context) : IActividadRepos
         await context.SaveChangesAsync(cancellationToken);
     }
 
+    public Task<bool> ExisteUsuarioAsync(string usuarioId, CancellationToken cancellationToken = default) =>
+        context.Usuarios.AnyAsync(u => u.Id == usuarioId, cancellationToken);
+
     public async Task CompartirAsync(Actividad actividad, string usuarioId, DateTime ahora, CancellationToken cancellationToken = default)
     {
         if (context.Entry(actividad).State == EntityState.Detached)
@@ -70,7 +101,7 @@ public class ActividadRepository(ApplicationDbContext context) : IActividadRepos
     {
         // Borrado logico (soft delete): se marca la actividad y todo su subarbol como eliminadas
         // conservando los datos fisicos en la base de datos.
-        var ahora = DateTime.Now;
+        var ahora = DateTime.UtcNow;
         foreach (var nodo in ConDescendientes(actividad))
         {
             nodo.MarcarEliminada(ahora);

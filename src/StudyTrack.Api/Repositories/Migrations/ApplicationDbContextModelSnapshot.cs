@@ -43,16 +43,16 @@ namespace StudyTrack.Api.Repositories.Migrations
                         .HasColumnType("boolean");
 
                     b.Property<DateTime?>("FechaCompletada")
-                        .HasColumnType("timestamp without time zone");
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<DateTime?>("FechaEliminacion")
-                        .HasColumnType("timestamp without time zone");
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<DateTime>("FechaFin")
-                        .HasColumnType("timestamp without time zone");
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<DateTime>("FechaInicio")
-                        .HasColumnType("timestamp without time zone");
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<bool>("GeneradaAutomaticamente")
                         .HasColumnType("boolean");
@@ -94,7 +94,7 @@ namespace StudyTrack.Api.Repositories.Migrations
                         .HasColumnType("character varying(64)");
 
                     b.Property<DateTime>("FechaCompartida")
-                        .HasColumnType("timestamp without time zone");
+                        .HasColumnType("timestamp with time zone");
 
                     b.HasKey("ActividadId", "UsuarioId");
 

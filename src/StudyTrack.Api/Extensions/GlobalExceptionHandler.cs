@@ -16,6 +16,8 @@ public sealed class GlobalExceptionHandler(ILogger<GlobalExceptionHandler> logge
             // o valores que no encajan en el tipo (un enum desconocido, una fecha invalida).
             BadHttpRequestException =>
                 ProblemDetailsResponses.ValidationFailed("body", "El cuerpo de la solicitud no es JSON valido o no tiene el formato esperado."),
+            BadRequestException badRequest =>
+                ProblemDetailsResponses.ValidationFailed(badRequest.Errors),
             NotFoundException notFound =>
                 ProblemDetailsResponses.NotFound(notFound.Message),
             ForbiddenException forbidden =>

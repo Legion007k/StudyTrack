@@ -24,7 +24,7 @@ public abstract class StudyTrackApiTests : IDisposable
 
     protected static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web)
     {
-        Converters = { new JsonStringEnumConverter() }
+        Converters = { new JsonStringEnumConverter(), new ActividadCompartidaJsonConverter() }
     };
 
     private readonly string _nombreBaseDeDatos = $"rutas-{Guid.NewGuid()}";
@@ -61,8 +61,38 @@ public abstract class StudyTrackApiTests : IDisposable
     {
         using var scope = Factory.Services.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+        await AsegurarUsuariosBaseAsync(context);
         context.Actividades.AddRange(actividades);
         await context.SaveChangesAsync();
+    }
+
+    protected static async Task AsegurarUsuariosBaseAsync(ApplicationDbContext context)
+    {
+        if (!await context.Usuarios.AnyAsync())
+        {
+            context.Usuarios.AddRange(
+                new Usuario { Id = "usuario-1", Nombre = "Usuario Uno", Email = "u1@test.com" },
+                new Usuario { Id = "usuario-2", Nombre = "Usuario Dos", Email = "u2@test.com" },
+                new Usuario { Id = "usuario-colaborador", Nombre = "Colaborador", Email = "colab@test.com" },
+                new Usuario { Id = "usuario-ajeno", Nombre = "Ajeno", Email = "ajeno@test.com" }
+            );
+            await context.SaveChangesAsync();
+        }
+    }
+
+    protected async Task SembrarUsuariosAsync(params Usuario[] usuarios)
+    {
+        using var scope = Factory.Services.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+        if (usuarios.Length == 0)
+        {
+            await AsegurarUsuariosBaseAsync(context);
+        }
+        else
+        {
+            context.Usuarios.AddRange(usuarios);
+            await context.SaveChangesAsync();
+        }
     }
 
     protected async Task<int> ContarActividadesAsync()

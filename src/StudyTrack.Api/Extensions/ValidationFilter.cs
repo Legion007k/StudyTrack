@@ -6,7 +6,7 @@ using Microsoft.Extensions.DependencyInjection;
 namespace StudyTrack.Api.Extensions;
 
 /// <summary>Valida con FluentValidation el argumento de tipo <typeparamref name="T"/> del endpoint.</summary>
-public sealed class ValidationFilter<T> : IEndpointFilter where T : class
+public sealed class ValidationFilter<T>(string? ruleSet = null) : IEndpointFilter where T : class
 {
     public async ValueTask<object?> InvokeAsync(EndpointFilterInvocationContext context, EndpointFilterDelegate next)
     {
@@ -16,7 +16,13 @@ public sealed class ValidationFilter<T> : IEndpointFilter where T : class
         if (argumento is null || validator is null)
             return await next(context);
 
-        var resultado = await validator.ValidateAsync(argumento, context.HttpContext.RequestAborted);
+        var resultado = ruleSet is null
+            ? await validator.ValidateAsync(argumento, context.HttpContext.RequestAborted)
+            : await validator.ValidateAsync(
+                argumento,
+                options => options.IncludeRuleSets(ruleSet).IncludeRulesNotInRuleSet(),
+                context.HttpContext.RequestAborted);
+
         if (resultado.IsValid)
             return await next(context);
 

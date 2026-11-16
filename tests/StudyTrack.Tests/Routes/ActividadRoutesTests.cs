@@ -1,7 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
 using StudyTrack.Api.Domain;
-using StudyTrack.Api.Dtos;
 using StudyTrack.Tests.Builders;
 
 namespace StudyTrack.Tests.Routes;
@@ -45,7 +44,7 @@ public class ActividadRoutesTests : StudyTrackApiTests
         var respuesta = await Client.GetAsync("/actividades");
 
         Assert.Equal(HttpStatusCode.OK, respuesta.StatusCode);
-        Assert.Empty((await LeerAsync<ActividadDto[]>(respuesta))!);
+        Assert.Empty((await LeerAsync<Actividad[]>(respuesta))!);
     }
 
     [Fact]
@@ -59,7 +58,7 @@ public class ActividadRoutesTests : StudyTrackApiTests
         var respuesta = await Client.GetAsync("/actividades");
 
         Assert.Equal(HttpStatusCode.OK, respuesta.StatusCode);
-        var actividades = (await LeerAsync<ActividadDto[]>(respuesta))!;
+        var actividades = (await LeerAsync<Actividad[]>(respuesta))!;
         Assert.Equal(["raiz", "otra"], actividades.Select(a => a.Id));
         Assert.Equal("hija", Assert.Single(actividades[0].ActividadesHijas).Id);
     }
@@ -101,9 +100,38 @@ public class ActividadRoutesTests : StudyTrackApiTests
         var respuesta = await Client.GetAsync($"/actividades/calendario?desde={desde}&hasta={hasta}");
 
         Assert.Equal(HttpStatusCode.OK, respuesta.StatusCode);
-        var actividades = (await LeerAsync<ActividadDto[]>(respuesta))!;
+        var actividades = (await LeerAsync<Actividad[]>(respuesta))!;
         var unica = Assert.Single(actividades);
         Assert.Equal("dentro", unica.Id);
+    }
+
+    [Fact]
+    public async Task GetCalendario_ConJerarquiaPadreEHija_NoDuplicaHijaEnNivelSuperior()
+    {
+        var padre = new ActividadBuilder().WithId("cal-padre").WithTitulo("Padre Calendario")
+            .WithTipo(TipoActividad.Entrega)
+            .WithFechaInicio(Ahora.AddDays(1)).WithFechaFin(Ahora.AddDays(10)).Build();
+        var hija = new ActividadBuilder().WithId("cal-hija").WithTitulo("Hija Calendario")
+            .WithPadre(padre)
+            .WithFechaInicio(Ahora.AddDays(2)).WithFechaFin(Ahora.AddDays(5)).Build();
+
+        await SembrarAsync(padre, hija);
+
+        var desde = Uri.EscapeDataString(Ahora.ToString("yyyy-MM-dd"));
+        var hasta = Uri.EscapeDataString(Ahora.AddDays(12).ToString("yyyy-MM-dd"));
+
+        var respuesta = await Client.GetAsync($"/actividades/calendario?desde={desde}&hasta={hasta}");
+
+        Assert.Equal(HttpStatusCode.OK, respuesta.StatusCode);
+        var actividades = (await LeerAsync<Actividad[]>(respuesta))!;
+
+        // El arreglo raiz solo debe contener al padre
+        var raiz = Assert.Single(actividades);
+        Assert.Equal("cal-padre", raiz.Id);
+
+        // La hija solo debe aparecer anidada dentro de ActividadesHijas del padre
+        var hijaEncontrada = Assert.Single(raiz.ActividadesHijas);
+        Assert.Equal("cal-hija", hijaEncontrada.Id);
     }
 
     // ---------- GET /actividades/{id} ----------
@@ -116,7 +144,7 @@ public class ActividadRoutesTests : StudyTrackApiTests
         var respuesta = await Client.GetAsync("/actividades/actividad-1");
 
         Assert.Equal(HttpStatusCode.OK, respuesta.StatusCode);
-        var actividad = (await LeerAsync<ActividadDto>(respuesta))!;
+        var actividad = (await LeerAsync<Actividad>(respuesta))!;
         Assert.Equal("actividad-1", actividad.Id);
         Assert.Equal(TipoActividad.Presentacion, actividad.Tipo);
     }
@@ -149,7 +177,7 @@ public class ActividadRoutesTests : StudyTrackApiTests
         var respuesta = await Client.PostAsJsonAsync("/actividades", CreateBody());
 
         Assert.Equal(HttpStatusCode.Created, respuesta.StatusCode);
-        var creada = (await LeerAsync<ActividadDto>(respuesta))!;
+        var creada = (await LeerAsync<Actividad>(respuesta))!;
         Assert.True(Guid.TryParse(creada.Id, out _));
         Assert.Equal($"/actividades/{creada.Id}", respuesta.Headers.Location?.OriginalString);
         Assert.Equal("usuario-1", creada.UserId);
@@ -169,7 +197,7 @@ public class ActividadRoutesTests : StudyTrackApiTests
         var respuesta = await Client.PostAsJsonAsync("/actividades", body);
 
         Assert.Equal(HttpStatusCode.Created, respuesta.StatusCode);
-        Assert.Equal(Ahora, (await LeerAsync<ActividadDto>(respuesta))!.FechaInicio);
+        Assert.Equal(Ahora, (await LeerAsync<Actividad>(respuesta))!.FechaInicio);
     }
 
     public static TheoryData<string, string> CamposInvalidos => new()
@@ -180,7 +208,6 @@ public class ActividadRoutesTests : StudyTrackApiTests
         { """{ "userId": "usuario-1", "titulo": "Sin fecha" }""", "fechaFin" },
         { """{ "userId": "usuario_1", "titulo": "Usuario invalido", "fechaFin": "2026-09-10T10:00:00" }""", "userId" },
         { """{ "userId": "usuario-1", "titulo": "Padre invalido", "fechaFin": "2026-09-10T10:00:00", "actividadPadreId": "padre#1" }""", "actividadPadreId" },
-        { """{ "userId": "usuario-1", "titulo": "Con zona", "fechaFin": "2026-09-10T10:00:00Z" }""", "fechaFin" },
     };
 
     [Theory]
@@ -234,7 +261,7 @@ public class ActividadRoutesTests : StudyTrackApiTests
         var respuesta = await Client.PostAsJsonAsync("/actividades", CreateBody(actividadPadreId: "padre"));
 
         Assert.Equal(HttpStatusCode.Created, respuesta.StatusCode);
-        var padre = (await Client.GetFromJsonAsync<ActividadDto>("/actividades/padre", Json))!;
+        var padre = (await Client.GetFromJsonAsync<Actividad>("/actividades/padre", Json))!;
         Assert.Equal("Proyecto final", Assert.Single(padre.ActividadesHijas).Titulo);
     }
 
@@ -269,7 +296,7 @@ public class ActividadRoutesTests : StudyTrackApiTests
         var respuesta = await Client.PutAsJsonAsync("/actividades/actividad-1", UpdateBody(completada: true));
 
         Assert.Equal(HttpStatusCode.OK, respuesta.StatusCode);
-        var actualizada = (await LeerAsync<ActividadDto>(respuesta))!;
+        var actualizada = (await LeerAsync<Actividad>(respuesta))!;
         Assert.Equal("Titulo actualizado", actualizada.Titulo);
         Assert.Equal("Descripcion actualizada", actualizada.Descripcion);
         Assert.Equal(Ahora.AddDays(20), actualizada.FechaFin);
@@ -278,8 +305,12 @@ public class ActividadRoutesTests : StudyTrackApiTests
         Assert.Equal(Ahora, actualizada.FechaCompletada);
         Assert.Equal(ActividadBuilder.FechaBase, actualizada.FechaInicio);
 
-        var persistida = (await Client.GetFromJsonAsync<ActividadDto>("/actividades/actividad-1", Json))!;
-        Assert.Equal(actualizada, persistida with { ActividadesHijas = actualizada.ActividadesHijas });
+        var persistida = (await Client.GetFromJsonAsync<Actividad>("/actividades/actividad-1", Json))!;
+        Assert.Equal(actualizada, persistida with
+        {
+            ActividadesHijas = actualizada.ActividadesHijas,
+            Colaboradores = actualizada.Colaboradores
+        });
     }
 
     [Fact]
@@ -332,7 +363,11 @@ public class ActividadRoutesTests : StudyTrackApiTests
         new ActividadBuilder().WithId("hija").WithTitulo("Hija").WithPadre(raiz).Build();
         await SembrarAsync(raiz);
 
-        var respuesta = await Client.DeleteAsync("/actividades/raiz");
+        using var request = new HttpRequestMessage(HttpMethod.Delete, "/actividades/raiz")
+        {
+            Content = JsonContent.Create(new { userId = "usuario-1" })
+        };
+        var respuesta = await Client.SendAsync(request);
 
         Assert.Equal(HttpStatusCode.NoContent, respuesta.StatusCode);
         Assert.Empty(await respuesta.Content.ReadAsByteArrayAsync());
@@ -426,5 +461,280 @@ public class ActividadRoutesTests : StudyTrackApiTests
         var respuesta = await Client.SendAsync(request);
 
         Assert.Equal(HttpStatusCode.Forbidden, respuesta.StatusCode);
+    }
+
+    [Fact]
+    public async Task Delete_ConBodyDeUsuarioDuenio_Devuelve204NoContent()
+    {
+        var raiz = new ActividadBuilder().WithId("raiz-body").WithTitulo("Raiz Body").WithTipo(TipoActividad.Examen).Build();
+        new ActividadBuilder().WithId("hija-body").WithTitulo("Hija Body").WithPadre(raiz).Build();
+        await SembrarAsync(raiz);
+
+        using var request = new HttpRequestMessage(HttpMethod.Delete, "/actividades/raiz-body")
+        {
+            Content = JsonContent.Create(new { userId = "usuario-1" })
+        };
+        var respuesta = await Client.SendAsync(request);
+
+        Assert.Equal(HttpStatusCode.NoContent, respuesta.StatusCode);
+        Assert.Empty(await respuesta.Content.ReadAsByteArrayAsync());
+        Assert.Equal(HttpStatusCode.NotFound, (await Client.GetAsync("/actividades/raiz-body")).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await Client.GetAsync("/actividades/hija-body")).StatusCode);
+    }
+
+    [Fact]
+    public async Task Delete_ConBodyDeUsuarioNoDuenio_Devuelve403Forbidden()
+    {
+        var actividad = new ActividadBuilder().WithId("act-no-duenio").WithUserId("usuario-1").Build();
+        await SembrarAsync(actividad);
+
+        using var request = new HttpRequestMessage(HttpMethod.Delete, "/actividades/act-no-duenio")
+        {
+            Content = JsonContent.Create(new { userId = "usuario-ajeno" })
+        };
+        var respuesta = await Client.SendAsync(request);
+
+        Assert.Equal(HttpStatusCode.Forbidden, respuesta.StatusCode);
+    }
+
+    [Fact]
+    public async Task Delete_SinUsuario_Devuelve403Forbidden()
+    {
+        var actividad = new ActividadBuilder().WithId("act-sin-header").WithUserId("usuario-1").Build();
+        await SembrarAsync(actividad);
+
+        var respuesta = await Client.DeleteAsync("/actividades/act-sin-header");
+
+        Assert.Equal(HttpStatusCode.Forbidden, respuesta.StatusCode);
+    }
+
+    [Fact]
+    public async Task Compartir_SinUsuario_Devuelve403Forbidden()
+    {
+        var actividad = new ActividadBuilder().WithId("act-compartir-sin-header").WithUserId("usuario-1").Build();
+        await SembrarAsync(actividad);
+
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/actividades/act-compartir-sin-header/compartir")
+        {
+            Content = JsonContent.Create(new { usuarioId = "usuario-2" })
+        };
+
+        var respuesta = await Client.SendAsync(request);
+
+        Assert.Equal(HttpStatusCode.Forbidden, respuesta.StatusCode);
+    }
+
+    [Fact]
+    public async Task Compartir_ConPropietarioEnBody_SinHeader_Devuelve200Ok()
+    {
+        var actividad = new ActividadBuilder().WithId("act-compartir-body").WithUserId("usuario-1").Build();
+        await SembrarAsync(actividad);
+
+        var respuesta = await Client.PostAsJsonAsync(
+            "/actividades/act-compartir-body/compartir",
+            new { propietarioId = "usuario-1", usuarioId = "usuario-2" });
+
+        Assert.Equal(HttpStatusCode.OK, respuesta.StatusCode);
+    }
+
+    [Fact]
+    public async Task Compartir_ConUsuarioAjenoEnBody_SinHeader_Devuelve403Forbidden()
+    {
+        var actividad = new ActividadBuilder().WithId("act-compartir-ajeno").WithUserId("usuario-1").Build();
+        await SembrarAsync(actividad);
+
+        var respuesta = await Client.PostAsJsonAsync(
+            "/actividades/act-compartir-ajeno/compartir",
+            new { propietarioId = "usuario-ajeno", usuarioId = "usuario-2" });
+
+        Assert.Equal(HttpStatusCode.Forbidden, respuesta.StatusCode);
+    }
+
+    [Fact]
+    public async Task Compartir_UsuarioDestinoNoExiste_Devuelve400BadRequest()
+    {
+        var actividad = new ActividadBuilder().WithId("act-compartir-inexistente").WithUserId("usuario-1").Build();
+        await SembrarAsync(actividad);
+
+        var respuesta = await Client.PostAsJsonAsync(
+            "/actividades/act-compartir-inexistente/compartir",
+            new { propietarioId = "usuario-1", usuarioId = "usuario-fantasma" });
+
+        Assert.Equal(HttpStatusCode.BadRequest, respuesta.StatusCode);
+        var cuerpo = await LeerJsonAsync(respuesta);
+        Assert.Equal(400, cuerpo.GetProperty("status").GetInt32());
+        Assert.True(cuerpo.GetProperty("errors").TryGetProperty("usuarioId", out _));
+    }
+
+    [Fact]
+    public async Task Put_ConUsuarioNoAutorizadoEnBody_Devuelve403Forbidden()
+    {
+        var actividad = new ActividadBuilder().WithId("act-put-privada").WithUserId("usuario-1").Build();
+        await SembrarAsync(actividad);
+
+        var respuesta = await Client.PutAsJsonAsync(
+            "/actividades/act-put-privada",
+            new
+            {
+                userId = "usuario-ajeno",
+                titulo = "Intento Modificar",
+                fechaFin = Ahora.AddDays(5)
+            });
+
+        Assert.Equal(HttpStatusCode.Forbidden, respuesta.StatusCode);
+    }
+
+    // ---------- Punto 6: Colaboradores directos en Creación y Actualización ----------
+
+    [Fact]
+    public async Task Post_ConColaboradoresEnFormatoString_CreaYDevuelveColaboradores()
+    {
+        await SembrarUsuariosAsync();
+
+        var body = new
+        {
+            userId = "usuario-1",
+            titulo = "Proyecto Final con Colaboradores",
+            descripcion = "Entrega grupal",
+            fechaFin = Ahora.AddDays(15),
+            tipo = "Entrega",
+            colaboradores = new[] { "usuario-2", "usuario-colaborador" }
+        };
+
+        var respuesta = await Client.PostAsJsonAsync("/actividades", body);
+
+        Assert.Equal(HttpStatusCode.Created, respuesta.StatusCode);
+        var creada = (await LeerAsync<Actividad>(respuesta))!;
+        Assert.NotNull(creada.Colaboradores);
+        Assert.Equal(2, creada.Colaboradores.Count);
+        Assert.Contains(creada.Colaboradores, c => c.UsuarioId == "usuario-2");
+        Assert.Contains(creada.Colaboradores, c => c.UsuarioId == "usuario-colaborador");
+
+        // Verificar que persiste en base de datos
+        var persistida = (await Client.GetFromJsonAsync<Actividad>($"/actividades/{creada.Id}?userId=usuario-1", Json))!;
+        Assert.NotNull(persistida.Colaboradores);
+        Assert.Equal(2, persistida.Colaboradores.Count);
+    }
+
+    [Fact]
+    public async Task Post_ConColaboradorInexistente_Devuelve400BadRequest()
+    {
+        var body = new
+        {
+            userId = "usuario-1",
+            titulo = "Proyecto Invalido",
+            fechaFin = Ahora.AddDays(15),
+            tipo = "Entrega",
+            colaboradores = new[] { "usuario-fantasma-xyz" }
+        };
+
+        var respuesta = await Client.PostAsJsonAsync("/actividades", body);
+
+        Assert.Equal(HttpStatusCode.BadRequest, respuesta.StatusCode);
+        var cuerpo = await LeerJsonAsync(respuesta);
+        Assert.True(cuerpo.GetProperty("errors").TryGetProperty("colaboradores", out _));
+    }
+
+    [Fact]
+    public async Task Put_DuenioActualizaColaboradores_Devuelve200Ok()
+    {
+        var actividad = new ActividadBuilder().WithId("act-put-colab").WithUserId("usuario-1").Build();
+        await SembrarAsync(actividad);
+
+        var respuesta = await Client.PutAsJsonAsync(
+            "/actividades/act-put-colab",
+            new
+            {
+                userId = "usuario-1",
+                titulo = "Proyecto Actualizado",
+                fechaFin = Ahora.AddDays(20),
+                tipo = "Examen",
+                colaboradores = new[] { "usuario-2" }
+            });
+
+        Assert.Equal(HttpStatusCode.OK, respuesta.StatusCode);
+        var actualizada = (await LeerAsync<Actividad>(respuesta))!;
+        Assert.NotNull(actualizada.Colaboradores);
+        Assert.Single(actualizada.Colaboradores);
+        Assert.Equal("usuario-2", actualizada.Colaboradores.First().UsuarioId);
+
+        var persistida = (await Client.GetFromJsonAsync<Actividad>("/actividades/act-put-colab?userId=usuario-1", Json))!;
+        Assert.NotNull(persistida.Colaboradores);
+        Assert.Single(persistida.Colaboradores);
+        Assert.Equal("usuario-2", persistida.Colaboradores.First().UsuarioId);
+    }
+
+    [Fact]
+    public async Task Put_ColaboradorIntentaModificarColaboradores_Devuelve403Forbidden()
+    {
+        var actividad = new ActividadBuilder().WithId("act-put-colab-forbid").WithUserId("usuario-1").Build();
+        actividad.CompartirCon("usuario-colaborador", DateTime.UtcNow);
+        await SembrarAsync(actividad);
+
+        var respuesta = await Client.PutAsJsonAsync(
+            "/actividades/act-put-colab-forbid",
+            new
+            {
+                userId = "usuario-colaborador",
+                titulo = "Intento Modificar Colaboradores",
+                fechaFin = Ahora.AddDays(20),
+                tipo = "Examen",
+                colaboradores = new[] { "usuario-ajeno" }
+            });
+
+        Assert.Equal(HttpStatusCode.Forbidden, respuesta.StatusCode);
+    }
+
+    // ---------- Punto 4: Filtro de Búsqueda y Calendario por Usuario ----------
+
+    [Fact]
+    public async Task GetAll_ConFiltroUsuario_DevuelveSoloActividadesPropiasYCompartidas()
+    {
+        var propia = new ActividadBuilder().WithId("getall-propia").WithUserId("usuario-1").Build();
+        var compartida = new ActividadBuilder().WithId("getall-compartida").WithUserId("usuario-2").Build();
+        compartida.CompartirCon("usuario-1", DateTime.UtcNow);
+        var ajena = new ActividadBuilder().WithId("getall-ajena").WithUserId("usuario-ajeno").Build();
+
+        await SembrarAsync(propia, compartida, ajena);
+
+        var respuesta = await Client.GetAsync("/actividades?userId=usuario-1");
+
+        Assert.Equal(HttpStatusCode.OK, respuesta.StatusCode);
+        var actividades = (await LeerAsync<Actividad[]>(respuesta))!;
+        var ids = actividades.Select(a => a.Id).ToList();
+
+        Assert.Contains("getall-propia", ids);
+        Assert.Contains("getall-compartida", ids);
+        Assert.DoesNotContain("getall-ajena", ids);
+    }
+
+    [Fact]
+    public async Task GetCalendario_ConFiltroUsuario_DevuelveSoloActividadesEnRangoDelUsuario()
+    {
+        var dentroPropia = new ActividadBuilder().WithId("cal-propia")
+            .WithUserId("usuario-1")
+            .WithFechaInicio(Ahora.AddDays(1)).WithFechaFin(Ahora.AddDays(5)).Build();
+        var dentroCompartida = new ActividadBuilder().WithId("cal-compartida")
+            .WithUserId("usuario-2")
+            .WithFechaInicio(Ahora.AddDays(2)).WithFechaFin(Ahora.AddDays(6)).Build();
+        dentroCompartida.CompartirCon("usuario-1", DateTime.UtcNow);
+        var dentroAjena = new ActividadBuilder().WithId("cal-ajena")
+            .WithUserId("usuario-ajeno")
+            .WithFechaInicio(Ahora.AddDays(3)).WithFechaFin(Ahora.AddDays(7)).Build();
+
+        await SembrarAsync(dentroPropia, dentroCompartida, dentroAjena);
+
+        var desde = Uri.EscapeDataString(Ahora.ToString("yyyy-MM-dd"));
+        var hasta = Uri.EscapeDataString(Ahora.AddDays(10).ToString("yyyy-MM-dd"));
+
+        var respuesta = await Client.GetAsync($"/actividades/calendario?desde={desde}&hasta={hasta}&userId=usuario-1");
+
+        Assert.Equal(HttpStatusCode.OK, respuesta.StatusCode);
+        var actividades = (await LeerAsync<Actividad[]>(respuesta))!;
+        var ids = actividades.Select(a => a.Id).ToList();
+
+        Assert.Contains("cal-propia", ids);
+        Assert.Contains("cal-compartida", ids);
+        Assert.DoesNotContain("cal-ajena", ids);
     }
 }

@@ -6,7 +6,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Moq;
 using StudyTrack.Api.Delegates;
-using StudyTrack.Api.Dtos;
+using StudyTrack.Api.Domain;
 using StudyTrack.Tests.Routes;
 
 namespace StudyTrack.Tests.Middleware;
@@ -97,7 +97,7 @@ public class ValidationMiddlewareTests : StudyTrackApiTests
     public async Task ExcepcionNoControlada_Devuelve500SinExponerDetallesInternos()
     {
         var delegateMock = new Mock<IActividadDelegate>();
-        delegateMock.Setup(d => d.GetAllAsync(It.IsAny<CancellationToken>()))
+        delegateMock.Setup(d => d.GetAllAsync(It.IsAny<string?>(), It.IsAny<CancellationToken>()))
             .ThrowsAsync(new InvalidOperationException("detalle interno secreto"));
         using var cliente = CrearCliente(services =>
         {
@@ -129,6 +129,6 @@ public class ValidationMiddlewareTests : StudyTrackApiTests
         var respuesta = await cliente.PostAsJsonAsync("/actividades", new { userId = "", titulo = "" });
 
         Assert.Equal(HttpStatusCode.BadRequest, respuesta.StatusCode);
-        delegateMock.Verify(d => d.CreateAsync(It.IsAny<CreateActividadDto>(), It.IsAny<CancellationToken>()), Times.Never);
+        delegateMock.Verify(d => d.CreateAsync(It.IsAny<Actividad>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 }

@@ -1,7 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
 using System.Text;
-using StudyTrack.Api.Dtos;
+using StudyTrack.Api.Domain;
 using StudyTrack.Tests.Builders;
 
 namespace StudyTrack.Tests.Routes;
@@ -111,10 +111,10 @@ public class CrossCuttingRoutesTests : StudyTrackApiTests
             })));
 
         Assert.All(respuestas, r => Assert.Equal(HttpStatusCode.Created, r.StatusCode));
-        var creadas = await Task.WhenAll(respuestas.Select(r => LeerAsync<ActividadDto>(r)));
+        var creadas = await Task.WhenAll(respuestas.Select(r => LeerAsync<Actividad>(r)));
         Assert.Equal(total, creadas.Select(c => c!.Id).Distinct().Count());
 
-        var listado = (await Client.GetFromJsonAsync<ActividadDto[]>("/actividades", Json))!;
+        var listado = (await Client.GetFromJsonAsync<Actividad[]>("/actividades", Json))!;
         Assert.Equal(
             Enumerable.Range(0, total).Select(i => $"Tarea {i:D2}").Order(),
             listado.Select(a => a.Titulo).Order());
@@ -135,9 +135,49 @@ public class CrossCuttingRoutesTests : StudyTrackApiTests
             })));
 
         Assert.All(respuestas, r => Assert.Equal(HttpStatusCode.OK, r.StatusCode));
-        var final = (await Client.GetFromJsonAsync<ActividadDto>("/actividades/actividad-1", Json))!;
+        var final = (await Client.GetFromJsonAsync<Actividad>("/actividades/actividad-1", Json))!;
         Assert.Contains(final.Titulo, titulos);
         Assert.Equal($"Descripcion de {final.Titulo}", final.Descripcion);
         Assert.Equal(1, await ContarActividadesAsync());
+    }
+
+    // ---------- Swagger / OpenAPI ----------
+
+    [Fact]
+    public async Task Swagger_JsonSpec_Devuelve200OkConEsquemaYEndpoints()
+    {
+        var respuesta = await Client.GetAsync("/swagger/v1/swagger.json");
+
+        Assert.Equal(HttpStatusCode.OK, respuesta.StatusCode);
+        var json = await respuesta.Content.ReadAsStringAsync();
+        Assert.Contains("StudyTrack API", json);
+        Assert.Contains("/actividades", json);
+        Assert.Contains("/actividades/calendario", json);
+    }
+
+    [Fact]
+    public async Task Swagger_Ui_Devuelve200OkConPaginaHtml()
+    {
+        var respuesta = await Client.GetAsync("/swagger/index.html");
+
+        Assert.Equal(HttpStatusCode.OK, respuesta.StatusCode);
+        Assert.Equal("text/html", respuesta.Content.Headers.ContentType?.MediaType);
+        var html = await respuesta.Content.ReadAsStringAsync();
+        Assert.Contains("swagger", html, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task Swagger_Raiz_RedirigeASwagger()
+    {
+        // Usar cliente sin auto-redirect para verificar el 302
+        var clienteSinRedirect = Factory.CreateClient(new Microsoft.AspNetCore.Mvc.Testing.WebApplicationFactoryClientOptions
+        {
+            AllowAutoRedirect = false
+        });
+
+        var respuesta = await clienteSinRedirect.GetAsync("/");
+
+        Assert.Equal(HttpStatusCode.Redirect, respuesta.StatusCode);
+        Assert.Equal("/swagger", respuesta.Headers.Location?.OriginalString);
     }
 }

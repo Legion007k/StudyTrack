@@ -14,13 +14,10 @@ internal static class ActividadRules
         regla.MaximumLength(2000).WithMessage("La descripcion no puede superar 2000 caracteres.");
 
     /// <summary>
-    /// Las fechas son horas de pared del estudiante: una fecha con zona ("Z" u offset) se rechaza
-    /// en vez de convertirla en silencio a otra hora.
+    /// Las fechas deben ser instantes válidos (preferentemente en UTC).
     /// </summary>
     public static void FechaFinValida<T>(this IRuleBuilder<T, DateTime> regla) =>
-        regla.NotEmpty().WithMessage("La fecha de fin es obligatoria.")
-            .Must(fecha => fecha.Kind == DateTimeKind.Unspecified)
-            .WithMessage("La fecha de fin debe enviarse sin zona horaria, por ejemplo 2026-09-20T10:00:00.");
+        regla.NotEmpty().WithMessage("La fecha de fin es obligatoria.");
 
     public static void TipoValido<T>(this IRuleBuilder<T, TipoActividad> regla) =>
         regla.IsInEnum().WithMessage("El tipo de actividad no es valido.");

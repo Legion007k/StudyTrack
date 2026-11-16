@@ -23,9 +23,9 @@ public class ApplicationDbContextTests
     [InlineData(nameof(Actividad.FechaFin))]
     [InlineData(nameof(Actividad.FechaCompletada))]
     [InlineData(nameof(Actividad.FechaEliminacion))]
-    public void PropiedadesDateTime_SeMapeanATimestampSinZonaHoraria(string propiedad)
+    public void PropiedadesDateTime_SeMapeanATimestampConZonaHorariaUtc(string propiedad)
     {
-        Assert.Equal("timestamp without time zone", ModeloDeActividad().FindProperty(propiedad)!.GetColumnType());
+        Assert.Equal("timestamp with time zone", ModeloDeActividad().FindProperty(propiedad)!.GetColumnType());
     }
 
     [Fact]

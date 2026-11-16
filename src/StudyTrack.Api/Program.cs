@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
 using StudyTrack.Api.Delegates;
 using StudyTrack.Api.Extensions;
@@ -17,7 +18,9 @@ var app = builder.Build();
 // Las migraciones se aplican con "dotnet ef database update", no al arrancar: aplicarlas aqui
 // obligaria a los tests con WebApplicationFactory a tener un PostgreSQL disponible.
 app.UseApiErrorResponses();
+app.UseApiSwagger();
 
+app.MapGet("/", () => Microsoft.AspNetCore.Http.Results.Redirect("/swagger")).ExcludeFromDescription();
 app.MapActividadRoutes();
 
 app.Run();

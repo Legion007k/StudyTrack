@@ -16,7 +16,6 @@ public class CapasTests
     private const string Domain = Raiz + ".Domain";
     private const string Repositories = Raiz + ".Repositories";
     private const string Delegates = Raiz + ".Delegates";
-    private const string Dtos = Raiz + ".Dtos";
     private const string Routes = Raiz + ".Routes";
     private const string Validators = Raiz + ".Validators";
     private const string Extensions = Raiz + ".Extensions";
@@ -39,7 +38,6 @@ public class CapasTests
     [InlineData(Domain)]
     [InlineData(Repositories)]
     [InlineData(Delegates)]
-    [InlineData(Dtos)]
     [InlineData(Routes)]
     [InlineData(Validators)]
     [InlineData(Extensions)]
@@ -70,7 +68,7 @@ public class CapasTests
         AssertSinDependencias(
             Types.InAssembly(Api).That().ResideInNamespace(Domain).ShouldNot().HaveDependencyOnAny(
                 EfCore, AspNetCore, "Npgsql", "FluentValidation", "System.ComponentModel.DataAnnotations",
-                Repositories, Delegates, Dtos, Routes, Validators, Extensions),
+                Repositories, Delegates, Routes, Validators, Extensions),
             "Domain solo puede contener entidades puras");
     }
 
@@ -79,7 +77,7 @@ public class CapasTests
     {
         AssertSinDependencias(
             Types.InAssembly(Api).That().ResideInNamespace(Repositories).ShouldNot().HaveDependencyOnAny(
-                AspNetCore, "FluentValidation", Delegates, Dtos, Routes, Validators, Extensions),
+                AspNetCore, "FluentValidation", Delegates, Routes, Validators, Extensions),
             "Repositories solo puede depender de Domain y de EF Core");
     }
 
@@ -92,15 +90,6 @@ public class CapasTests
                 $"{Repositories}.ApplicationDbContext", $"{Repositories}.ActividadRepository", $"{Repositories}.Migrations",
                 Routes, Validators, Extensions),
             "Delegates solo puede usar las interfaces de Repositories");
-    }
-
-    [Fact]
-    public void Dtos_NoDependenDeInfraestructuraNiDeCapasHttp()
-    {
-        AssertSinDependencias(
-            Types.InAssembly(Api).That().ResideInNamespace(Dtos).ShouldNot().HaveDependencyOnAny(
-                EfCore, AspNetCore, Repositories, Delegates, Routes, Validators, Extensions),
-            "Dtos solo puede depender de Domain");
     }
 
     [Fact]

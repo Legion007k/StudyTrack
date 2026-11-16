@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace StudyTrack.Api.Domain;
 
 /// <summary>
@@ -12,7 +14,7 @@ public enum TipoActividad
     Presentacion
 }
 
-public class Actividad
+public record class Actividad
 {
     /// <summary>Mayor profundidad que admite cualquier tipo; acota la carga de subarboles.</summary>
     public const int ProfundidadMaximaAbsoluta = 3;
@@ -50,11 +52,12 @@ public class Actividad
     /// <summary>Actividad de la que cuelga. Null si es una actividad raiz.</summary>
     public string? ActividadPadreId { get; set; }
 
+    [JsonIgnore]
     public Actividad? ActividadPadre { get; set; }
 
-    public ICollection<Actividad> ActividadesHijas { get; set; } = new List<Actividad>();
+    public IList<Actividad> ActividadesHijas { get; set; } = new List<Actividad>();
 
-    public ICollection<ActividadCompartida> Colaboradores { get; set; } = new List<ActividadCompartida>();
+    public ICollection<ActividadCompartida>? Colaboradores { get; set; }
 
     /// <summary>
     /// Niveles de subactividades que admite un arbol cuya raiz es de este tipo.
@@ -116,11 +119,12 @@ public class Actividad
 
     /// <summary>Indica si el usuario tiene autorizacion para ver o colaborar en la actividad.</summary>
     public bool EsAccesiblePor(string userId) =>
-        UserId == userId || Colaboradores.Any(c => c.UsuarioId == userId);
+        UserId == userId || (Colaboradores is not null && Colaboradores.Any(c => c.UsuarioId == userId));
 
     /// <summary>Comparte la actividad con otro usuario si no ha sido compartida previamente.</summary>
     public bool CompartirCon(string usuarioId, DateTime ahora)
     {
+        Colaboradores ??= new List<ActividadCompartida>();
         if (usuarioId == UserId || Colaboradores.Any(c => c.UsuarioId == usuarioId))
             return false;
 

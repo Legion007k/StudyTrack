@@ -224,6 +224,7 @@ public class ActividadTests
         var compartido = actividad.CompartirCon("usuario-2", Fecha);
 
         Assert.True(compartido);
+        Assert.NotNull(actividad.Colaboradores);
         var colaborador = Assert.Single(actividad.Colaboradores);
         Assert.Equal("usuario-2", colaborador.UsuarioId);
         Assert.Equal(Fecha, colaborador.FechaCompartida);

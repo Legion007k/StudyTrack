@@ -5,7 +5,7 @@ namespace StudyTrack.Tests.Builders;
 /// <summary>Builder fluido con valores fijos por defecto para que las pruebas sean deterministas.</summary>
 public class ActividadBuilder
 {
-    public static readonly DateTime FechaBase = new(2026, 9, 1, 8, 0, 0);
+    public static readonly DateTime FechaBase = new(2026, 9, 1, 8, 0, 0, DateTimeKind.Utc);
 
     private readonly Actividad _actividad = new()
     {

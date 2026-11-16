@@ -19,4 +19,17 @@ public static class ApiApplicationBuilderExtensions
 
         return app;
     }
+
+    /// <summary>Habilita la documentacion interactiva Swagger y Swagger UI.</summary>
+    public static IApplicationBuilder UseApiSwagger(this IApplicationBuilder app)
+    {
+        app.UseSwagger();
+        app.UseSwaggerUI(options =>
+        {
+            options.SwaggerEndpoint("/swagger/v1/swagger.json", "StudyTrack API v1");
+            options.RoutePrefix = "swagger";
+        });
+
+        return app;
+    }
 }

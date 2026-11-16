@@ -4,12 +4,12 @@ namespace StudyTrack.Api.Repositories;
 
 public interface IActividadRepository
 {
-    /// <summary>Todas las actividades, en una lista plana.</summary>
-    Task<IReadOnlyList<Actividad>> GetAllAsync(CancellationToken cancellationToken = default);
+    /// <summary>Todas las actividades, en una lista plana opcionalmente filtrada por usuario (duenio o colaborador).</summary>
+    Task<IReadOnlyList<Actividad>> GetAllAsync(string? userId = null, CancellationToken cancellationToken = default);
 
-    /// <summary>Actividades cuyo periodo de fechas se traslapa con el rango [desde, hasta].</summary>
+    /// <summary>Actividades cuyo periodo de fechas se traslapa con el rango [desde, hasta], opcionalmente filtradas por usuario.</summary>
     Task<IReadOnlyList<Actividad>> GetPorRangoFechasAsync(
-        DateTime desde, DateTime hasta, CancellationToken cancellationToken = default);
+        DateTime desde, DateTime hasta, string? userId = null, CancellationToken cancellationToken = default);
 
     /// <summary>La actividad con su subarbol de hijas cargado, o null si no existe.</summary>
     Task<Actividad?> GetByIdAsync(string id, CancellationToken cancellationToken = default);
@@ -21,6 +21,9 @@ public interface IActividadRepository
     Task AddAsync(Actividad actividad, CancellationToken cancellationToken = default);
 
     Task UpdateAsync(Actividad actividad, CancellationToken cancellationToken = default);
+
+    /// <summary>Verifica si existe un usuario registrado con el ID especificado.</summary>
+    Task<bool> ExisteUsuarioAsync(string usuarioId, CancellationToken cancellationToken = default);
 
     /// <summary>Registra un colaborador para compartir la actividad.</summary>
     Task CompartirAsync(Actividad actividad, string usuarioId, DateTime ahora, CancellationToken cancellationToken = default);
