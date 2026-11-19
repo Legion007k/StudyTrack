@@ -1,0 +1,23 @@
+ingressClass:
+  enabled: true
+  name: traefik
+  isDefaultClass: false
+providers:
+  kubernetesIngress:
+    enabled: true
+service:
+  spec:
+    type: NodePort
+ports:
+  web:
+    port: 8000
+    exposedPort: 80
+    nodePort: 30081
+    expose:
+      default: true
+  websecure:
+    expose:
+      default: false
+ingressRoute:
+  dashboard:
+    enabled: false
