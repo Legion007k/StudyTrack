@@ -6,7 +6,6 @@ namespace StudyTrack.Api.Domain;
 /// Tabla intermedia que relaciona una actividad con los usuarios colaboradores
 /// con los que ha sido compartida.
 /// </summary>
-[JsonConverter(typeof(ActividadCompartidaJsonConverter))]
 public class ActividadCompartida
 {
     public string ActividadId { get; set; } = string.Empty;

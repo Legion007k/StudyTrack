@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
 using System.Text;
+using Microsoft.AspNetCore.Hosting;
 using StudyTrack.Api.Domain;
 using StudyTrack.Tests.Builders;
 
@@ -8,13 +9,13 @@ namespace StudyTrack.Tests.Routes;
 
 public class CrossCuttingRoutesTests : StudyTrackApiTests
 {
-    private const string JsonValido = """{ "userId": "usuario-1", "titulo": "Tarea", "fechaFin": "2026-09-10T10:00:00" }""";
+    private const string JsonValido = """{ "userId": "usuario-1", "titulo": "Tarea", "fechaFin": "2026-09-10T10:00:00Z" }""";
 
     // ---------- Content-Type ----------
 
     [Theory]
-    [InlineData("GET", "/actividades")]
-    [InlineData("GET", "/actividades/actividad-1")]
+    [InlineData("GET", "/actividades?userId=usuario-1")]
+    [InlineData("GET", "/actividades/actividad-1?userId=usuario-1")]
     [InlineData("POST", "/actividades")]
     [InlineData("PUT", "/actividades/actividad-1")]
     public async Task RespuestasExitosas_SonApplicationJson(string metodo, string ruta)
@@ -51,7 +52,7 @@ public class CrossCuttingRoutesTests : StudyTrackApiTests
     [Fact]
     public async Task RespuestasDeError_SonProblemJson()
     {
-        var respuesta = await Client.GetAsync("/actividades/no-existe");
+        var respuesta = await Client.GetAsync("/actividades/no-existe?userId=usuario-1");
 
         Assert.Equal(HttpStatusCode.NotFound, respuesta.StatusCode);
         Assert.Equal("application/problem+json", respuesta.Content.Headers.ContentType?.MediaType);
@@ -75,7 +76,7 @@ public class CrossCuttingRoutesTests : StudyTrackApiTests
         await SembrarAsync(new ActividadBuilder().WithId("actividad-1").Build());
         var solicitud = new HttpRequestMessage(new HttpMethod(metodo), $"/actividades/{id}");
         if (metodo == "PUT")
-            solicitud.Content = JsonContent.Create(new { titulo = "x", fechaFin = "2026-09-10T10:00:00" });
+            solicitud.Content = JsonContent.Create(new { userId = "usuario-1", titulo = "x", fechaFin = "2026-09-10T10:00:00Z" });
 
         var respuesta = await Client.SendAsync(solicitud);
 
@@ -90,7 +91,7 @@ public class CrossCuttingRoutesTests : StudyTrackApiTests
     [InlineData("DELETE")]
     public async Task IdConFormatoValidoPeroInexistente_Devuelve404NoUn400(string metodo)
     {
-        var respuesta = await Client.SendAsync(new HttpRequestMessage(new HttpMethod(metodo), "/actividades/ABC-123-xyz"));
+        var respuesta = await Client.SendAsync(new HttpRequestMessage(new HttpMethod(metodo), "/actividades/ABC-123-xyz?userId=usuario-1"));
 
         Assert.Equal(HttpStatusCode.NotFound, respuesta.StatusCode);
     }
@@ -114,7 +115,7 @@ public class CrossCuttingRoutesTests : StudyTrackApiTests
         var creadas = await Task.WhenAll(respuestas.Select(r => LeerAsync<Actividad>(r)));
         Assert.Equal(total, creadas.Select(c => c!.Id).Distinct().Count());
 
-        var listado = (await Client.GetFromJsonAsync<Actividad[]>("/actividades", Json))!;
+        var listado = (await Client.GetFromJsonAsync<Actividad[]>("/actividades?userId=usuario-1", Json))!;
         Assert.Equal(
             Enumerable.Range(0, total).Select(i => $"Tarea {i:D2}").Order(),
             listado.Select(a => a.Titulo).Order());
@@ -129,13 +130,14 @@ public class CrossCuttingRoutesTests : StudyTrackApiTests
         var respuestas = await Task.WhenAll(titulos.Select(titulo =>
             Client.PutAsJsonAsync("/actividades/actividad-1", new
             {
+                userId = "usuario-1",
                 titulo,
                 descripcion = $"Descripcion de {titulo}",
                 fechaFin = Ahora.AddDays(3)
             })));
 
         Assert.All(respuestas, r => Assert.Equal(HttpStatusCode.OK, r.StatusCode));
-        var final = (await Client.GetFromJsonAsync<Actividad>("/actividades/actividad-1", Json))!;
+        var final = (await Client.GetFromJsonAsync<Actividad>("/actividades/actividad-1?userId=usuario-1", Json))!;
         Assert.Contains(final.Titulo, titulos);
         Assert.Equal($"Descripcion de {final.Titulo}", final.Descripcion);
         Assert.Equal(1, await ContarActividadesAsync());
@@ -179,5 +181,35 @@ public class CrossCuttingRoutesTests : StudyTrackApiTests
 
         Assert.Equal(HttpStatusCode.Redirect, respuesta.StatusCode);
         Assert.Equal("/swagger", respuesta.Headers.Location?.OriginalString);
+    }
+
+    [Fact]
+    public async Task Swagger_JsonSpec_NoDocumentaElHeaderXUserIdEIncluyeUsuarios()
+    {
+        var json = await Client.GetStringAsync("/swagger/v1/swagger.json");
+
+        Assert.DoesNotContain("X-User-Id", json);
+        Assert.Contains("/usuarios", json);
+    }
+
+    [Fact]
+    public async Task Swagger_EnProductionSinConfiguracion_NoSePublica()
+    {
+        using var cliente = Factory.WithWebHostBuilder(builder => builder.UseEnvironment("Production"))
+            .CreateClient(new Microsoft.AspNetCore.Mvc.Testing.WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+
+        Assert.Equal(HttpStatusCode.NotFound, (await cliente.GetAsync("/swagger/v1/swagger.json")).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await cliente.GetAsync("/")).StatusCode);
+    }
+
+    [Fact]
+    public async Task Swagger_EnProductionConSwaggerHabilitado_SePublica()
+    {
+        using var cliente = Factory.WithWebHostBuilder(builder => builder
+                .UseEnvironment("Production")
+                .UseSetting("Swagger:Habilitado", "true"))
+            .CreateClient();
+
+        Assert.Equal(HttpStatusCode.OK, (await cliente.GetAsync("/swagger/v1/swagger.json")).StatusCode);
     }
 }

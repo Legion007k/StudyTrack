@@ -1,12 +1,12 @@
 namespace StudyTrack.Api.Domain;
 
 /// <summary>
-/// Representa a un estudiante o usuario del sistema.
-/// No almacena contrasenas ni credenciales: el sistema opera bajo autorizacion pura.
+/// Estudiante registrado en el sistema. No almacena contrasenas ni credenciales:
+/// el sistema no tiene autenticacion y el usuario se identifica con su Id.
 /// </summary>
 public class Usuario
 {
-    public string Id { get; set; } = Guid.NewGuid().ToString();
+    public string Id { get; set; } = string.Empty;
 
     public string Nombre { get; set; } = string.Empty;
 

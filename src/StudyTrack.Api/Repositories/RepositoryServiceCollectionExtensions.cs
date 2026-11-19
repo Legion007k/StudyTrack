@@ -11,6 +11,7 @@ public static class RepositoryServiceCollectionExtensions
             options.UseNpgsql(connectionString, npgsql => npgsql.EnableRetryOnFailure(5)));
 
         services.AddScoped<IActividadRepository, ActividadRepository>();
+        services.AddScoped<IUsuarioRepository, UsuarioRepository>();
 
         return services;
     }

@@ -29,7 +29,7 @@ public class ActividadRepositoryTests
     {
         await using var context = NuevoContexto();
 
-        var resultado = await new ActividadRepository(context).GetAllAsync();
+        var resultado = await new ActividadRepository(context).GetAllAsync("usuario-1");
 
         Assert.Empty(resultado);
     }
@@ -43,7 +43,7 @@ public class ActividadRepositoryTests
         await SembrarAsync(raiz, anterior);
 
         await using var context = NuevoContexto();
-        var resultado = await new ActividadRepository(context).GetAllAsync();
+        var resultado = await new ActividadRepository(context).GetAllAsync("usuario-1");
 
         Assert.Equal(["c-anterior", "a-hija", "b-raiz"], resultado.Select(a => a.Id));
     }
@@ -145,7 +145,7 @@ public class ActividadRepositoryTests
         await using (var context = NuevoContexto())
         {
             var repositorio = new ActividadRepository(context);
-            await repositorio.DeleteAsync((await repositorio.GetByIdAsync("raiz"))!);
+            await repositorio.DeleteAsync((await repositorio.GetByIdAsync("raiz"))!, Fecha.AddDays(2));
         }
 
         await using var verificacion = NuevoContexto();
@@ -163,7 +163,7 @@ public class ActividadRepositoryTests
         Assert.All(eliminadas, a =>
         {
             Assert.True(a.Eliminada);
-            Assert.NotNull(a.FechaEliminacion);
+            Assert.Equal(Fecha.AddDays(2), a.FechaEliminacion);
         });
     }
 
@@ -189,7 +189,7 @@ public class ActividadRepositoryTests
         await SembrarAsync(activa, eliminada);
 
         await using var context = NuevoContexto();
-        var resultado = await new ActividadRepository(context).GetAllAsync();
+        var resultado = await new ActividadRepository(context).GetAllAsync("usuario-1");
 
         Assert.Equal(["activa"], resultado.Select(a => a.Id));
     }
@@ -247,7 +247,7 @@ public class ActividadRepositoryTests
         await SembrarAsync(antes, traslapeInicio, adentro, traslapeFin, despues);
 
         await using var context = NuevoContexto();
-        var resultado = await new ActividadRepository(context).GetPorRangoFechasAsync(rangoDesde, rangoHasta);
+        var resultado = await new ActividadRepository(context).GetPorRangoFechasAsync(rangoDesde, rangoHasta, "usuario-1");
 
         Assert.Equal(["traslape-inicio", "adentro", "traslape-fin"], resultado.Select(a => a.Id));
     }
@@ -268,8 +268,52 @@ public class ActividadRepositoryTests
         await SembrarAsync(activa, eliminada);
 
         await using var context = NuevoContexto();
-        var resultado = await new ActividadRepository(context).GetPorRangoFechasAsync(rangoDesde, rangoHasta);
+        var resultado = await new ActividadRepository(context).GetPorRangoFechasAsync(rangoDesde, rangoHasta, "usuario-1");
 
         Assert.Equal(["activa"], resultado.Select(a => a.Id));
+    }
+
+    [Fact]
+    public async Task GetAllAsync_SoloDevuelveLasActividadesVisiblesParaElUsuario()
+    {
+        var propia = new ActividadBuilder().WithId("propia").WithUserId("usuario-1").Build();
+        var ajena = new ActividadBuilder().WithId("ajena").WithUserId("usuario-3").WithTitulo("Ajena").Build();
+        var compartida = new ActividadBuilder().WithId("compartida").WithUserId("usuario-2").WithTitulo("Compartida").Build();
+        compartida.CompartirCon("usuario-1", Fecha);
+        await SembrarAsync(propia, ajena, compartida);
+
+        await using var context = NuevoContexto();
+        var resultado = await new ActividadRepository(context).GetAllAsync("usuario-1");
+
+        Assert.Equal(["compartida", "propia"], resultado.Select(a => a.Id).Order());
+    }
+
+    [Fact]
+    public async Task GetAllAsync_IncluyeTodoElSubarbolDeUnaRaizCompartida()
+    {
+        var raiz = new ActividadBuilder().WithId("raiz").WithUserId("usuario-2").WithTipo(TipoActividad.Entrega).Build();
+        var fase = new ActividadBuilder().WithId("fase").WithUserId("usuario-2").WithTitulo("Fase").WithPadre(raiz).Build();
+        var tarea = new ActividadBuilder().WithId("tarea").WithUserId("usuario-2").WithTitulo("Tarea").WithPadre(fase).Build();
+        new ActividadBuilder().WithId("paso").WithUserId("usuario-2").WithTitulo("Paso").WithPadre(tarea).Build();
+        raiz.CompartirCon("usuario-1", Fecha);
+        await SembrarAsync(raiz);
+
+        await using var context = NuevoContexto();
+        var resultado = await new ActividadRepository(context).GetAllAsync("usuario-1");
+
+        Assert.Equal(["fase", "paso", "raiz", "tarea"], resultado.Select(a => a.Id).Order());
+    }
+
+    [Fact]
+    public async Task GetPorRangoFechasAsync_ExcluyeActividadesDeOtrosUsuarios()
+    {
+        var propia = new ActividadBuilder().WithId("propia").WithFechaFin(Fecha.AddDays(3)).Build();
+        var ajena = new ActividadBuilder().WithId("ajena").WithUserId("usuario-3").WithFechaFin(Fecha.AddDays(3)).Build();
+        await SembrarAsync(propia, ajena);
+
+        await using var context = NuevoContexto();
+        var resultado = await new ActividadRepository(context).GetPorRangoFechasAsync(Fecha, Fecha.AddDays(5), "usuario-1");
+
+        Assert.Equal(["propia"], resultado.Select(a => a.Id));
     }
 }

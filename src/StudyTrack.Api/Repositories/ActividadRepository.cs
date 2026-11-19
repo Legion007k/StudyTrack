@@ -12,49 +12,38 @@ public class ActividadRepository(ApplicationDbContext context) : IActividadRepos
     private static readonly string IncludeSubarbol = string.Join(
         ".", Enumerable.Repeat(nameof(Actividad.ActividadesHijas), Actividad.ProfundidadMaximaAbsoluta));
 
-    public async Task<IReadOnlyList<Actividad>> GetAllAsync(
-        string? userId = null, CancellationToken cancellationToken = default)
-    {
-        var query = context.Actividades
-            .AsNoTracking()
-            .Include(a => a.Colaboradores)
-            .AsQueryable();
-
-        if (!string.IsNullOrWhiteSpace(userId))
-        {
-            query = query.Where(a =>
-                a.UserId == userId
-                || (a.Colaboradores != null && a.Colaboradores.Any(c => c.UsuarioId == userId))
-                || (a.ActividadPadre != null && (a.ActividadPadre.UserId == userId || (a.ActividadPadre.Colaboradores != null && a.ActividadPadre.Colaboradores.Any(c => c.UsuarioId == userId)))));
-        }
-
-        return await query
+    public async Task<IReadOnlyList<Actividad>> GetAllAsync(string userId, CancellationToken cancellationToken = default) =>
+        await AccesiblesPor(context.Actividades.AsNoTracking().Include(a => a.Colaboradores), userId)
             .OrderBy(a => a.FechaInicio)
             .ThenBy(a => a.Id)
             .ToListAsync(cancellationToken);
-    }
 
     public async Task<IReadOnlyList<Actividad>> GetPorRangoFechasAsync(
-        DateTime desde, DateTime hasta, string? userId = null, CancellationToken cancellationToken = default)
-    {
-        var query = context.Actividades
-            .AsNoTracking()
-            .Include(a => a.Colaboradores)
-            .Where(a => a.FechaInicio <= hasta && a.FechaFin >= desde);
-
-        if (!string.IsNullOrWhiteSpace(userId))
-        {
-            query = query.Where(a =>
-                a.UserId == userId
-                || (a.Colaboradores != null && a.Colaboradores.Any(c => c.UsuarioId == userId))
-                || (a.ActividadPadre != null && (a.ActividadPadre.UserId == userId || (a.ActividadPadre.Colaboradores != null && a.ActividadPadre.Colaboradores.Any(c => c.UsuarioId == userId)))));
-        }
-
-        return await query
+        DateTime desde, DateTime hasta, string userId, CancellationToken cancellationToken = default) =>
+        await AccesiblesPor(context.Actividades.AsNoTracking().Include(a => a.Colaboradores), userId)
+            .Where(a => a.FechaInicio <= hasta && a.FechaFin >= desde)
             .OrderBy(a => a.FechaInicio)
             .ThenBy(a => a.Id)
             .ToListAsync(cancellationToken);
-    }
+
+    /// <summary>
+    /// Actividades que el usuario puede ver: las suyas, las compartidas con el y las que cuelgan
+    /// (a cualquier nivel) de una actividad compartida con el. La profundidad maxima es 3, asi que
+    /// basta con revisar hasta el bisabuelo.
+    /// </summary>
+    private static IQueryable<Actividad> AccesiblesPor(IQueryable<Actividad> query, string userId) =>
+        query.Where(a =>
+            a.UserId == userId
+            || a.Colaboradores!.Any(c => c.UsuarioId == userId)
+            || (a.ActividadPadre != null
+                && (a.ActividadPadre.UserId == userId
+                    || a.ActividadPadre.Colaboradores!.Any(c => c.UsuarioId == userId)
+                    || (a.ActividadPadre.ActividadPadre != null
+                        && (a.ActividadPadre.ActividadPadre.UserId == userId
+                            || a.ActividadPadre.ActividadPadre.Colaboradores!.Any(c => c.UsuarioId == userId)
+                            || (a.ActividadPadre.ActividadPadre.ActividadPadre != null
+                                && (a.ActividadPadre.ActividadPadre.ActividadPadre.UserId == userId
+                                    || a.ActividadPadre.ActividadPadre.ActividadPadre.Colaboradores!.Any(c => c.UsuarioId == userId))))))));
 
     public Task<Actividad?> GetByIdAsync(string id, CancellationToken cancellationToken = default) =>
         context.Actividades
@@ -97,11 +86,10 @@ public class ActividadRepository(ApplicationDbContext context) : IActividadRepos
         await context.SaveChangesAsync(cancellationToken);
     }
 
-    public async Task DeleteAsync(Actividad actividad, CancellationToken cancellationToken = default)
+    public async Task DeleteAsync(Actividad actividad, DateTime ahora, CancellationToken cancellationToken = default)
     {
         // Borrado logico (soft delete): se marca la actividad y todo su subarbol como eliminadas
-        // conservando los datos fisicos en la base de datos.
-        var ahora = DateTime.UtcNow;
+        // conservando los datos fisicos en la base de datos. La hora la decide el delegate (TimeProvider).
         foreach (var nodo in ConDescendientes(actividad))
         {
             nodo.MarcarEliminada(ahora);

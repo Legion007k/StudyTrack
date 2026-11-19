@@ -70,7 +70,7 @@ public class ActividadDelegateTests
             .Build();
         ConfigurarExistentes(actividad);
 
-        var dto = await _delegate.GetByIdAsync("actividad-1");
+        var dto = await _delegate.GetByIdAsync("actividad-1", "usuario-1");
 
         Assert.NotNull(dto);
         Assert.Equal("actividad-1", dto.Id);
@@ -94,7 +94,7 @@ public class ActividadDelegateTests
         _repoMock.Setup(r => r.GetByIdAsync("no-existe", It.IsAny<CancellationToken>()))
             .ReturnsAsync((Actividad?)null);
 
-        Assert.Null(await _delegate.GetByIdAsync("no-existe"));
+        Assert.Null(await _delegate.GetByIdAsync("no-existe", "usuario-1"));
         _repoMock.Verify(r => r.GetByIdAsync("no-existe", It.IsAny<CancellationToken>()), Times.Once);
     }
 
@@ -107,7 +107,7 @@ public class ActividadDelegateTests
         new ActividadBuilder().WithId("tarea").WithPadre(primera).Build();
         ConfigurarExistentes(raiz);
 
-        var dto = await _delegate.GetByIdAsync("raiz");
+        var dto = await _delegate.GetByIdAsync("raiz", "usuario-1");
 
         Assert.NotNull(dto);
         Assert.Equal(["fase-a", "fase-b"], dto.ActividadesHijas.Select(h => h.Id));
@@ -124,10 +124,10 @@ public class ActividadDelegateTests
     [Fact]
     public async Task GetAllAsync_SinActividades_DevuelveListaVacia()
     {
-        _repoMock.Setup(r => r.GetAllAsync(It.IsAny<string?>(), It.IsAny<CancellationToken>())).ReturnsAsync([]);
+        _repoMock.Setup(r => r.GetAllAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync([]);
 
-        Assert.Empty(await _delegate.GetAllAsync());
-        _repoMock.Verify(r => r.GetAllAsync(It.IsAny<string?>(), It.IsAny<CancellationToken>()), Times.Once);
+        Assert.Empty(await _delegate.GetAllAsync("usuario-1"));
+        _repoMock.Verify(r => r.GetAllAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
@@ -138,10 +138,10 @@ public class ActividadDelegateTests
         var raizTemprana = new ActividadBuilder().WithId("raiz-a").WithTitulo("Temprana").WithFechaInicio(Ahora).Build();
         var hija = new ActividadBuilder().WithId("hija").WithTitulo("Hija").Build();
         hija.ActividadPadreId = "raiz-a";
-        _repoMock.Setup(r => r.GetAllAsync(It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+        _repoMock.Setup(r => r.GetAllAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync([raizTardia, hija, raizTemprana]);
 
-        var resultado = await _delegate.GetAllAsync();
+        var resultado = await _delegate.GetAllAsync("usuario-1");
 
         Assert.Equal(["raiz-a", "raiz-b"], resultado.Select(a => a.Id));
         Assert.Equal("Temprana", resultado[0].Titulo);
@@ -149,7 +149,7 @@ public class ActividadDelegateTests
         Assert.Equal("hija", hijaDto.Id);
         Assert.Equal("raiz-a", hijaDto.ActividadPadreId);
         Assert.Empty(resultado[1].ActividadesHijas);
-        _repoMock.Verify(r => r.GetAllAsync(It.IsAny<string?>(), It.IsAny<CancellationToken>()), Times.Once);
+        _repoMock.Verify(r => r.GetAllAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
@@ -171,10 +171,10 @@ public class ActividadDelegateTests
         var hasta = Ahora.AddDays(2);
 
         var ex = await Assert.ThrowsAsync<BusinessRuleException>(
-            () => _delegate.GetCalendarioAsync(desde, hasta));
+            () => _delegate.GetCalendarioAsync(desde, hasta, "usuario-1"));
 
         Assert.Equal("rango", ex.Errors.Keys.Single());
-        _repoMock.Verify(r => r.GetPorRangoFechasAsync(It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()), Times.Never);
+        _repoMock.Verify(r => r.GetPorRangoFechasAsync(It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
@@ -186,13 +186,13 @@ public class ActividadDelegateTests
         var actividad1 = new ActividadBuilder().WithId("act-1").WithFechaInicio(Ahora.AddDays(1)).Build();
         var actividad2 = new ActividadBuilder().WithId("act-2").WithFechaInicio(Ahora.AddDays(3)).Build();
 
-        _repoMock.Setup(r => r.GetPorRangoFechasAsync(desde, hasta, It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+        _repoMock.Setup(r => r.GetPorRangoFechasAsync(desde, hasta, It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync([actividad2, actividad1]);
 
-        var resultado = await _delegate.GetCalendarioAsync(desde, hasta);
+        var resultado = await _delegate.GetCalendarioAsync(desde, hasta, "usuario-1");
 
         Assert.Equal(["act-1", "act-2"], resultado.Select(a => a.Id));
-        _repoMock.Verify(r => r.GetPorRangoFechasAsync(desde, hasta, It.IsAny<string?>(), It.IsAny<CancellationToken>()), Times.Once);
+        _repoMock.Verify(r => r.GetPorRangoFechasAsync(desde, hasta, It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
@@ -220,10 +220,10 @@ public class ActividadDelegateTests
         var hija = new ActividadBuilder().WithId("hija").WithTitulo("Hija").WithPadre(raiz)
             .WithFechaInicio(Ahora.AddDays(2)).WithFechaFin(Ahora.AddDays(5)).Build();
 
-        _repoMock.Setup(r => r.GetPorRangoFechasAsync(desde, hasta, It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+        _repoMock.Setup(r => r.GetPorRangoFechasAsync(desde, hasta, It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync([raiz, hija]);
 
-        var resultado = await _delegate.GetCalendarioAsync(desde, hasta);
+        var resultado = await _delegate.GetCalendarioAsync(desde, hasta, "usuario-1");
 
         // La raiz debe ser el unico elemento en el nivel superior
         var unicoEnRaiz = Assert.Single(resultado);
@@ -245,10 +245,10 @@ public class ActividadDelegateTests
             .WithFechaInicio(Ahora.AddDays(11)).WithFechaFin(Ahora.AddDays(13)).Build();
         hijaSola.ActividadPadreId = "padre-fuera-de-rango";
 
-        _repoMock.Setup(r => r.GetPorRangoFechasAsync(desde, hasta, It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+        _repoMock.Setup(r => r.GetPorRangoFechasAsync(desde, hasta, It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync([hijaSola]);
 
-        var resultado = await _delegate.GetCalendarioAsync(desde, hasta);
+        var resultado = await _delegate.GetCalendarioAsync(desde, hasta, "usuario-1");
 
         var unica = Assert.Single(resultado);
         Assert.Equal("hija-sola", unica.Id);
@@ -403,7 +403,7 @@ public class ActividadDelegateTests
             ActividadPadreId = "nuevo-padre"
         };
 
-        var resultado = await _delegate.UpdateAsync("actividad-1", dto);
+        var resultado = await _delegate.UpdateAsync("actividad-1", dto, "usuario-1");
 
         Assert.Equal("Titulo nuevo", resultado.Titulo);
         Assert.Equal("Descripcion nueva", resultado.Descripcion);
@@ -423,7 +423,7 @@ public class ActividadDelegateTests
     {
         var dto = UpdateActividadDe(new ActividadBuilder().Build());
 
-        await Assert.ThrowsAsync<NotFoundException>(() => _delegate.UpdateAsync("no-existe", dto));
+        await Assert.ThrowsAsync<NotFoundException>(() => _delegate.UpdateAsync("no-existe", dto, "usuario-1"));
 
         _repoMock.Verify(r => r.UpdateAsync(It.IsAny<Actividad>(), It.IsAny<CancellationToken>()), Times.Never);
     }
@@ -435,7 +435,7 @@ public class ActividadDelegateTests
         ConfigurarExistentes(actividad);
         _timeProvider.Advance(TimeSpan.FromDays(2));
 
-        var resultado = await _delegate.UpdateAsync(actividad.Id, UpdateActividadDe(actividad) with { Completada = true });
+        var resultado = await _delegate.UpdateAsync(actividad.Id, UpdateActividadDe(actividad) with { Completada = true }, "usuario-1");
 
         Assert.Equal(Ahora.AddDays(2), resultado.FechaCompletada);
         _repoMock.Verify(r => r.UpdateAsync(It.Is<Actividad>(a => a.Completada && a.FechaCompletada == Ahora.AddDays(2)), It.IsAny<CancellationToken>()), Times.Once);
@@ -448,7 +448,7 @@ public class ActividadDelegateTests
         ConfigurarExistentes(actividad);
         _timeProvider.Advance(TimeSpan.FromDays(5));
 
-        var resultado = await _delegate.UpdateAsync(actividad.Id, UpdateActividadDe(actividad));
+        var resultado = await _delegate.UpdateAsync(actividad.Id, UpdateActividadDe(actividad), "usuario-1");
 
         Assert.Equal(Ahora.AddDays(1), resultado.FechaCompletada);
         _repoMock.Verify(r => r.UpdateAsync(It.Is<Actividad>(a => a.Completada && a.FechaCompletada == Ahora.AddDays(1)), It.IsAny<CancellationToken>()), Times.Once);
@@ -460,7 +460,7 @@ public class ActividadDelegateTests
         var actividad = new ActividadBuilder().WithCompletada(Ahora.AddDays(1)).Build();
         ConfigurarExistentes(actividad);
 
-        var resultado = await _delegate.UpdateAsync(actividad.Id, UpdateActividadDe(actividad) with { Completada = false });
+        var resultado = await _delegate.UpdateAsync(actividad.Id, UpdateActividadDe(actividad) with { Completada = false }, "usuario-1");
 
         Assert.False(resultado.Completada);
         Assert.Null(resultado.FechaCompletada);
@@ -474,7 +474,7 @@ public class ActividadDelegateTests
         ConfigurarExistentes(actividad);
 
         var excepcion = await Assert.ThrowsAsync<BusinessRuleException>(() =>
-            _delegate.UpdateAsync(actividad.Id, UpdateActividadDe(actividad) with { FechaFin = actividad.FechaInicio.AddDays(-1) }));
+            _delegate.UpdateAsync(actividad.Id, UpdateActividadDe(actividad) with { FechaFin = actividad.FechaInicio.AddDays(-1) }, "usuario-1"));
 
         Assert.Contains("fechaFin", excepcion.Errors.Keys);
         _repoMock.Verify(r => r.UpdateAsync(It.IsAny<Actividad>(), It.IsAny<CancellationToken>()), Times.Never);
@@ -489,7 +489,7 @@ public class ActividadDelegateTests
         _repoMock.Setup(r => r.ExistsDuplicateAsync(actividad.UserId, "Repetido", actividad.FechaFin, actividad.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync(true);
 
-        var excepcion = await Assert.ThrowsAsync<BusinessRuleException>(() => _delegate.UpdateAsync(actividad.Id, dto));
+        var excepcion = await Assert.ThrowsAsync<BusinessRuleException>(() => _delegate.UpdateAsync(actividad.Id, dto, "usuario-1"));
 
         Assert.Contains("titulo", excepcion.Errors.Keys);
         _repoMock.Verify(r => r.UpdateAsync(It.IsAny<Actividad>(), It.IsAny<CancellationToken>()), Times.Never);
@@ -502,7 +502,7 @@ public class ActividadDelegateTests
         ConfigurarExistentes(actividad);
 
         var excepcion = await Assert.ThrowsAsync<BusinessRuleException>(() =>
-            _delegate.UpdateAsync("actividad-1", UpdateActividadDe(actividad) with { ActividadPadreId = "actividad-1" }));
+            _delegate.UpdateAsync("actividad-1", UpdateActividadDe(actividad) with { ActividadPadreId = "actividad-1" }, "usuario-1"));
 
         Assert.Contains("propia actividad padre", excepcion.Errors["actividadPadreId"][0]);
         _repoMock.Verify(r => r.UpdateAsync(It.IsAny<Actividad>(), It.IsAny<CancellationToken>()), Times.Never);
@@ -516,7 +516,7 @@ public class ActividadDelegateTests
         ConfigurarExistentes(raiz, hija);
 
         var excepcion = await Assert.ThrowsAsync<BusinessRuleException>(() =>
-            _delegate.UpdateAsync("raiz", UpdateActividadDe(raiz) with { ActividadPadreId = "hija" }));
+            _delegate.UpdateAsync("raiz", UpdateActividadDe(raiz) with { ActividadPadreId = "hija" }, "usuario-1"));
 
         Assert.Contains("subactividades", excepcion.Errors["actividadPadreId"][0]);
         _repoMock.Verify(r => r.UpdateAsync(It.IsAny<Actividad>(), It.IsAny<CancellationToken>()), Times.Never);
@@ -534,7 +534,7 @@ public class ActividadDelegateTests
         ConfigurarExistentes(raizExamen, tema, movida);
 
         var excepcion = await Assert.ThrowsAsync<BusinessRuleException>(() =>
-            _delegate.UpdateAsync("movida", UpdateActividadDe(movida) with { ActividadPadreId = "tema" }));
+            _delegate.UpdateAsync("movida", UpdateActividadDe(movida) with { ActividadPadreId = "tema" }, "usuario-1"));
 
         Assert.Contains("profundidad maxima", excepcion.Errors["actividadPadreId"][0]);
         _repoMock.Verify(r => r.UpdateAsync(It.IsAny<Actividad>(), It.IsAny<CancellationToken>()), Times.Never);
@@ -549,7 +549,7 @@ public class ActividadDelegateTests
         ConfigurarExistentes(raiz);
 
         var excepcion = await Assert.ThrowsAsync<BusinessRuleException>(() =>
-            _delegate.UpdateAsync("raiz", UpdateActividadDe(raiz) with { Tipo = TipoActividad.General }));
+            _delegate.UpdateAsync("raiz", UpdateActividadDe(raiz) with { Tipo = TipoActividad.General }, "usuario-1"));
 
         Assert.Contains("tipo", excepcion.Errors.Keys);
         _repoMock.Verify(r => r.UpdateAsync(It.IsAny<Actividad>(), It.IsAny<CancellationToken>()), Times.Never);
@@ -562,7 +562,7 @@ public class ActividadDelegateTests
         var hija = new ActividadBuilder().WithId("hija").WithTitulo("Hija").WithPadre(padre).Build();
         ConfigurarExistentes(padre, hija);
 
-        var resultado = await _delegate.UpdateAsync("hija", UpdateActividadDe(hija) with { ActividadPadreId = null });
+        var resultado = await _delegate.UpdateAsync("hija", UpdateActividadDe(hija) with { ActividadPadreId = null }, "usuario-1");
 
         Assert.Null(resultado.ActividadPadreId);
         _repoMock.Verify(r => r.UpdateAsync(It.Is<Actividad>(a => a.ActividadPadreId == null), It.IsAny<CancellationToken>()), Times.Once);
@@ -578,7 +578,7 @@ public class ActividadDelegateTests
 
         await _delegate.DeleteAsync(actividad.Id, callerUserId: actividad.UserId);
 
-        _repoMock.Verify(r => r.DeleteAsync(actividad, It.IsAny<CancellationToken>()), Times.Once);
+        _repoMock.Verify(r => r.DeleteAsync(actividad, Ahora, It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
@@ -586,7 +586,7 @@ public class ActividadDelegateTests
     {
         await Assert.ThrowsAsync<NotFoundException>(() => _delegate.DeleteAsync("no-existe", callerUserId: "usuario-1"));
 
-        _repoMock.Verify(r => r.DeleteAsync(It.IsAny<Actividad>(), It.IsAny<CancellationToken>()), Times.Never);
+        _repoMock.Verify(r => r.DeleteAsync(It.IsAny<Actividad>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
@@ -600,6 +600,7 @@ public class ActividadDelegateTests
 
         _repoMock.Verify(r => r.DeleteAsync(
             It.Is<Actividad>(a => a.Id == "raiz" && a.ActividadesHijas.Single().Id == "hija"),
+            It.IsAny<DateTime>(),
             It.IsAny<CancellationToken>()), Times.Once);
     }
 
@@ -607,15 +608,15 @@ public class ActividadDelegateTests
     [InlineData(null)]
     [InlineData("")]
     [InlineData("   ")]
-    public async Task DeleteAsync_SinUsuario_LanzaForbiddenException(string? callerUserId)
+    public async Task DeleteAsync_SinUsuario_LanzaBadRequestException(string? callerUserId)
     {
         var actividad = new ActividadBuilder().WithId("act-1").WithUserId("usuario-1").Build();
         ConfigurarExistentes(actividad);
 
-        await Assert.ThrowsAsync<ForbiddenException>(
-            () => _delegate.DeleteAsync("act-1", callerUserId: callerUserId));
+        await Assert.ThrowsAsync<BadRequestException>(
+            () => _delegate.DeleteAsync("act-1", callerUserId: callerUserId!));
 
-        _repoMock.Verify(r => r.DeleteAsync(It.IsAny<Actividad>(), It.IsAny<CancellationToken>()), Times.Never);
+        _repoMock.Verify(r => r.DeleteAsync(It.IsAny<Actividad>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     // ---------- Autorizacion y Compartir ----------
@@ -624,13 +625,13 @@ public class ActividadDelegateTests
     [InlineData(null)]
     [InlineData("")]
     [InlineData("   ")]
-    public async Task CompartirAsync_SinUsuario_LanzaForbiddenException(string? callerUserId)
+    public async Task CompartirAsync_SinUsuario_LanzaBadRequestException(string? callerUserId)
     {
         var actividad = new ActividadBuilder().WithId("act-1").WithUserId("usuario-1").Build();
         ConfigurarExistentes(actividad);
 
-        await Assert.ThrowsAsync<ForbiddenException>(
-            () => _delegate.CompartirAsync("act-1", "usuario-2", callerUserId: callerUserId));
+        await Assert.ThrowsAsync<BadRequestException>(
+            () => _delegate.CompartirAsync("act-1", "usuario-2", callerUserId: callerUserId!));
 
         _repoMock.Verify(r => r.CompartirAsync(It.IsAny<Actividad>(), It.IsAny<string>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()), Times.Never);
     }
@@ -721,7 +722,7 @@ public class ActividadDelegateTests
         await Assert.ThrowsAsync<ForbiddenException>(
             () => _delegate.DeleteAsync("act-1", callerUserId: "usuario-colaborador"));
 
-        _repoMock.Verify(r => r.DeleteAsync(It.IsAny<Actividad>(), It.IsAny<CancellationToken>()), Times.Never);
+        _repoMock.Verify(r => r.DeleteAsync(It.IsAny<Actividad>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     // ---------- Punto 6: Colaboradores en Creación y Actualización ----------
@@ -833,5 +834,125 @@ public class ActividadDelegateTests
             () => _delegate.UpdateAsync("act-1", dto, callerUserId: "usuario-colaborador"));
 
         _repoMock.Verify(r => r.UpdateAsync(It.IsAny<Actividad>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    // ---------- Campos controlados por el servidor y usuario obligatorio ----------
+
+    [Fact]
+    public async Task CreateAsync_IgnoraLosCamposQueControlaElServidor()
+    {
+        Actividad? guardada = null;
+        _repoMock.Setup(r => r.AddAsync(It.IsAny<Actividad>(), It.IsAny<CancellationToken>()))
+            .Callback<Actividad, CancellationToken>((a, _) => guardada = a);
+        var enviada = CreateActividadValida() with
+        {
+            Id = "id-del-cliente",
+            FechaInicio = Ahora.AddYears(-5),
+            Completada = true,
+            FechaCompletada = Ahora.AddYears(-4),
+            GeneradaAutomaticamente = true,
+            Eliminada = true,
+            FechaEliminacion = Ahora.AddYears(-3)
+        };
+
+        var id = await _delegate.CreateAsync(enviada);
+
+        Assert.NotEqual("id-del-cliente", id);
+        Assert.True(Guid.TryParse(id, out _));
+        Assert.Equal(Ahora, guardada!.FechaInicio);
+        Assert.False(guardada.Completada);
+        Assert.Null(guardada.FechaCompletada);
+        Assert.False(guardada.GeneradaAutomaticamente);
+        Assert.False(guardada.Eliminada);
+        Assert.Null(guardada.FechaEliminacion);
+    }
+
+    [Fact]
+    public async Task CreateAsync_ColaboradoresRepetidos_SeGuardanUnaVez()
+    {
+        var actividad = CreateActividadValida();
+        actividad.Colaboradores = new List<ActividadCompartida> { new() { UsuarioId = "usuario-2" }, new() { UsuarioId = "usuario-2" } };
+
+        await _delegate.CreateAsync(actividad);
+
+        _repoMock.Verify(r => r.AddAsync(It.Is<Actividad>(a => a.Colaboradores!.Count == 1), It.IsAny<CancellationToken>()), Times.Once);
+        _repoMock.Verify(r => r.ExisteUsuarioAsync("usuario-2", It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    public async Task Consultas_SinUsuario_LanzanBadRequestException(string callerUserId)
+    {
+        await Assert.ThrowsAsync<BadRequestException>(() => _delegate.GetAllAsync(callerUserId));
+        await Assert.ThrowsAsync<BadRequestException>(() => _delegate.GetByIdAsync("act-1", callerUserId));
+        await Assert.ThrowsAsync<BadRequestException>(() => _delegate.GetCalendarioAsync(Ahora, Ahora.AddDays(1), callerUserId));
+        await Assert.ThrowsAsync<BadRequestException>(() => _delegate.UpdateAsync("act-1", CreateActividadValida(), callerUserId));
+        _repoMock.Verify(r => r.GetByIdAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task UpdateAsync_UsuarioAjeno_LanzaForbiddenYNoGuarda()
+    {
+        var actividad = new ActividadBuilder().WithId("act-1").WithUserId("usuario-1").Build();
+        ConfigurarExistentes(actividad);
+
+        await Assert.ThrowsAsync<ForbiddenException>(
+            () => _delegate.UpdateAsync("act-1", UpdateActividadDe(actividad) with { Titulo = "Cambiado" }, "usuario-ajeno"));
+
+        Assert.NotEqual("Cambiado", actividad.Titulo);
+        _repoMock.Verify(r => r.UpdateAsync(It.IsAny<Actividad>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task UpdateAsync_ColaboradorSinTocarColaboradores_PuedeEditar()
+    {
+        var actividad = new ActividadBuilder().WithId("act-1").WithUserId("usuario-1").Build();
+        actividad.CompartirCon("usuario-colaborador", Ahora);
+        ConfigurarExistentes(actividad);
+
+        var resultado = await _delegate.UpdateAsync(
+            "act-1", UpdateActividadDe(actividad) with { Titulo = "Editada por colaborador" }, "usuario-colaborador");
+
+        Assert.Equal("Editada por colaborador", resultado.Titulo);
+        Assert.Single(resultado.Colaboradores!);
+    }
+
+    [Fact]
+    public async Task GetByIdAsync_SubactividadDeUnaRaizCompartida_EsAccesibleParaElColaborador()
+    {
+        var raiz = new ActividadBuilder().WithId("raiz").WithTipo(TipoActividad.Examen).Build();
+        raiz.CompartirCon("usuario-2", Ahora);
+        var hija = new ActividadBuilder().WithId("hija").WithPadre(raiz).Build();
+        ConfigurarExistentes(raiz, hija);
+
+        var resultado = await _delegate.GetByIdAsync("hija", "usuario-2");
+
+        Assert.Equal("hija", resultado!.Id);
+    }
+
+    [Fact]
+    public async Task GetAllAsync_SubactividadCompartidaSinSuPadre_ApareceComoRaiz()
+    {
+        // usuario-2 solo tiene compartida la hija: el repositorio no le devuelve el padre.
+        var hija = new ActividadBuilder().WithId("hija").Build();
+        hija.ActividadPadreId = "padre-no-visible";
+        _repoMock.Setup(r => r.GetAllAsync("usuario-2", It.IsAny<CancellationToken>())).ReturnsAsync([hija]);
+
+        var resultado = await _delegate.GetAllAsync("usuario-2");
+
+        Assert.Equal("hija", Assert.Single(resultado).Id);
+    }
+
+    [Fact]
+    public async Task DeleteAsync_UsaLaHoraDelTimeProvider()
+    {
+        var actividad = new ActividadBuilder().Build();
+        ConfigurarExistentes(actividad);
+        _timeProvider.Advance(TimeSpan.FromHours(5));
+
+        await _delegate.DeleteAsync(actividad.Id, actividad.UserId);
+
+        _repoMock.Verify(r => r.DeleteAsync(actividad, Ahora.AddHours(5), It.IsAny<CancellationToken>()), Times.Once);
     }
 }

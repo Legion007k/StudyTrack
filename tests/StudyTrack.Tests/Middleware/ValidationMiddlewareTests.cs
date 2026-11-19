@@ -22,7 +22,7 @@ public class ValidationMiddlewareTests : StudyTrackApiTests
     [Fact]
     public async Task ErrorDeValidacion_TieneElFormatoProblemDetailsExactoDelContrato()
     {
-        var respuesta = await PostJsonAsync("""{ "userId": "", "titulo": "", "fechaFin": "2026-09-10T10:00:00" }""");
+        var respuesta = await PostJsonAsync("""{ "userId": "", "titulo": "", "fechaFin": "2026-09-10T10:00:00Z" }""");
 
         Assert.Equal(HttpStatusCode.BadRequest, respuesta.StatusCode);
         Assert.Equal("application/problem+json", respuesta.Content.Headers.ContentType?.MediaType);
@@ -46,8 +46,8 @@ public class ValidationMiddlewareTests : StudyTrackApiTests
     [InlineData("""{ "userId": "usuario-1", "titulo": """)]
     [InlineData("no es json")]
     [InlineData("""{ "userId": "usuario-1", "titulo": "Tarea", "fechaFin": "no-es-fecha" }""")]
-    [InlineData("""{ "userId": "usuario-1", "titulo": "Tarea", "fechaFin": "2026-09-10T10:00:00", "tipo": "Inexistente" }""")]
-    [InlineData("""{ "userId": "usuario-1", "titulo": "Tarea", "fechaFin": "2026-09-10T10:00:00", "tipo": 1 }""")]
+    [InlineData("""{ "userId": "usuario-1", "titulo": "Tarea", "fechaFin": "2026-09-10T10:00:00Z", "tipo": "Inexistente" }""")]
+    [InlineData("""{ "userId": "usuario-1", "titulo": "Tarea", "fechaFin": "2026-09-10T10:00:00Z", "tipo": 1 }""")]
     public async Task CuerpoMalformadoOConTiposIncorrectos_Devuelve400ConElMismoFormato(string json)
     {
         var respuesta = await PostJsonAsync(json);
@@ -62,7 +62,7 @@ public class ValidationMiddlewareTests : StudyTrackApiTests
     [Fact]
     public async Task EnumComoTexto_SeAceptaYSeDevuelveComoTexto()
     {
-        var respuesta = await PostJsonAsync("""{ "userId": "usuario-1", "titulo": "Tarea", "fechaFin": "2026-09-10T10:00:00", "tipo": "Presentacion" }""");
+        var respuesta = await PostJsonAsync("""{ "userId": "usuario-1", "titulo": "Tarea", "fechaFin": "2026-09-10T10:00:00Z", "tipo": "Presentacion" }""");
 
         Assert.Equal(HttpStatusCode.Created, respuesta.StatusCode);
         var cuerpo = await LeerJsonAsync(respuesta);
@@ -73,7 +73,7 @@ public class ValidationMiddlewareTests : StudyTrackApiTests
     [Fact]
     public async Task ReglaDeNegocio_Devuelve422ConErroresPorCampo()
     {
-        var respuesta = await PostJsonAsync("""{ "userId": "usuario-1", "titulo": "Vencida", "fechaFin": "2026-08-01T10:00:00" }""");
+        var respuesta = await PostJsonAsync("""{ "userId": "usuario-1", "titulo": "Vencida", "fechaFin": "2026-08-01T10:00:00Z" }""");
 
         Assert.Equal(HttpStatusCode.UnprocessableEntity, respuesta.StatusCode);
         var cuerpo = await LeerJsonAsync(respuesta);
@@ -85,7 +85,7 @@ public class ValidationMiddlewareTests : StudyTrackApiTests
     [Fact]
     public async Task NoEncontrado_Devuelve404ConProblemDetails()
     {
-        var respuesta = await Client.PutAsJsonAsync("/actividades/no-existe", new { titulo = "x", fechaFin = "2026-09-10T10:00:00" });
+        var respuesta = await Client.PutAsJsonAsync("/actividades/no-existe", new { userId = "usuario-1", titulo = "x", fechaFin = "2026-09-10T10:00:00Z" });
 
         Assert.Equal(HttpStatusCode.NotFound, respuesta.StatusCode);
         var cuerpo = await LeerJsonAsync(respuesta);
@@ -97,7 +97,7 @@ public class ValidationMiddlewareTests : StudyTrackApiTests
     public async Task ExcepcionNoControlada_Devuelve500SinExponerDetallesInternos()
     {
         var delegateMock = new Mock<IActividadDelegate>();
-        delegateMock.Setup(d => d.GetAllAsync(It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+        delegateMock.Setup(d => d.GetAllAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ThrowsAsync(new InvalidOperationException("detalle interno secreto"));
         using var cliente = CrearCliente(services =>
         {
@@ -105,7 +105,7 @@ public class ValidationMiddlewareTests : StudyTrackApiTests
             services.AddScoped(_ => delegateMock.Object);
         });
 
-        var respuesta = await cliente.GetAsync("/actividades");
+        var respuesta = await cliente.GetAsync("/actividades?userId=usuario-1");
 
         Assert.Equal(HttpStatusCode.InternalServerError, respuesta.StatusCode);
         Assert.Equal("application/problem+json", respuesta.Content.Headers.ContentType?.MediaType);

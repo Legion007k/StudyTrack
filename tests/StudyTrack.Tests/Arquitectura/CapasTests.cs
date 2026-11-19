@@ -108,8 +108,8 @@ public class CapasTests
     {
         AssertSinDependencias(
             Types.InAssembly(Api).That().ResideInNamespace(Routes).ShouldNot().HaveDependencyOnAny(
-                $"{Delegates}.ActividadDelegate", $"{Delegates}.DelegateServiceCollectionExtensions"),
-            "Routes debe llamar a IActividadDelegate, no a su implementacion");
+                $"{Delegates}.ActividadDelegate", $"{Delegates}.UsuarioDelegate", $"{Delegates}.DelegateServiceCollectionExtensions"),
+            "Routes debe llamar a las interfaces de los delegates, no a sus implementaciones");
     }
 
     // ---------- Menciones en el codigo fuente ----------

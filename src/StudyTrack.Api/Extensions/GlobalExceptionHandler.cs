@@ -22,6 +22,8 @@ public sealed class GlobalExceptionHandler(ILogger<GlobalExceptionHandler> logge
                 ProblemDetailsResponses.NotFound(notFound.Message),
             ForbiddenException forbidden =>
                 ProblemDetailsResponses.Forbidden(forbidden.Message),
+            ConflictException conflicto =>
+                ProblemDetailsResponses.Conflict(conflicto.Message),
             BusinessRuleException reglaDeNegocio =>
                 ProblemDetailsResponses.BusinessRuleViolation(reglaDeNegocio.Errors),
             _ => null

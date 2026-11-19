@@ -13,6 +13,7 @@ public static class DelegateServiceCollectionExtensions
 
         services.TryAddSingleton(TimeProvider.System);
         services.AddScoped<IActividadDelegate, ActividadDelegate>();
+        services.AddScoped<IUsuarioDelegate, UsuarioDelegate>();
 
         return services;
     }

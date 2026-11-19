@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -5,9 +6,14 @@ using Microsoft.AspNetCore.Routing;
 using StudyTrack.Api.Delegates;
 using StudyTrack.Api.Domain;
 using StudyTrack.Api.Extensions;
+using StudyTrack.Api.Validators;
 
 namespace StudyTrack.Api.Routes;
 
+/// <summary>
+/// El usuario que hace la solicitud siempre se llama <c>userId</c>: en la query string para las
+/// operaciones sin cuerpo (GET y DELETE) y en el cuerpo JSON para POST y PUT. No se lee ningun header.
+/// </summary>
 public static class ActividadRoutes
 {
     private const string Ruta = "/actividades";
@@ -15,106 +21,122 @@ public static class ActividadRoutes
 
     public static IEndpointRouteBuilder MapActividadRoutes(this IEndpointRouteBuilder app)
     {
-        var actividades = app.MapGroup(Ruta);
+        var actividades = app.MapGroup(Ruta).WithTags("Actividades");
 
         actividades.MapGet("/", GetAllAsync)
-            .WithSummary("Obtiene todas las actividades del usuario (raices y subactividades anidadas)")
-            .WithDescription("Devuelve las actividades donde el usuario es duenio o colaborador, ordenadas jerarquicamente.")
-            .Produces<IReadOnlyList<Actividad>>(StatusCodes.Status200OK);
-
-        actividades.MapGet("/calendario", GetCalendarioAsync)
-            .WithSummary("Consulta el calendario de actividades por rango de fechas")
-            .WithDescription("Filtra las actividades cuyo periodo se traslapa con el rango [desde, hasta] para el usuario solicitante.")
+            .WithName("ObtenerActividades")
+            .WithSummary("Lista las actividades del usuario como arbol")
+            .WithDescription("Devuelve las actividades propias, las compartidas con el usuario y las subactividades de estas. " +
+                             "Una subactividad compartida cuyo padre no es visible aparece como raiz.")
             .Produces<IReadOnlyList<Actividad>>(StatusCodes.Status200OK)
             .ProducesProblem(StatusCodes.Status400BadRequest)
-            .ProducesProblem(StatusCodes.Status422UnprocessableEntity);
+            .AddEndpointFilter<UserIdQueryFilter>();
 
-        actividades.MapGet($"/{{{IdParametro}}}", GetByIdAsync)
-            .WithSummary("Obtiene una actividad por su identificador")
-            .Produces<Actividad>(StatusCodes.Status200OK)
-            .ProducesProblem(StatusCodes.Status403Forbidden)
-            .ProducesProblem(StatusCodes.Status404NotFound)
-            .AddEndpointFilter(new IdFormatFilter(IdParametro));
-
-        actividades.MapPost("/", CreateAsync)
-            .WithSummary("Crea una nueva actividad")
-            .WithDescription("Permite crear actividades asociando colaboradores directamente en la misma solicitud atomica.")
-            .Produces<Actividad>(StatusCodes.Status201Created)
+        actividades.MapGet("/calendario", GetCalendarioAsync)
+            .WithName("ObtenerCalendario")
+            .WithSummary("Actividades del usuario que se traslapan con un rango de fechas")
+            .WithDescription("desde y hasta deben incluir zona horaria (Z u offset). Una hija cuyo padre tambien esta en el rango " +
+                             "aparece solo anidada, sin duplicarse.")
+            .Produces<IReadOnlyList<Actividad>>(StatusCodes.Status200OK)
             .ProducesProblem(StatusCodes.Status400BadRequest)
             .ProducesProblem(StatusCodes.Status422UnprocessableEntity)
-            .AddEndpointFilter(new ValidationFilter<Actividad>("Create"));
+            .AddEndpointFilter<UserIdQueryFilter>();
+
+        actividades.MapGet($"/{{{IdParametro}}}", GetByIdAsync)
+            .WithName("ObtenerActividadPorId")
+            .WithSummary("Obtiene una actividad con su subarbol")
+            .Produces<Actividad>(StatusCodes.Status200OK)
+            .ProducesProblem(StatusCodes.Status400BadRequest)
+            .ProducesProblem(StatusCodes.Status403Forbidden)
+            .ProducesProblem(StatusCodes.Status404NotFound)
+            .AddEndpointFilter(new IdFormatFilter(IdParametro))
+            .AddEndpointFilter<UserIdQueryFilter>();
+
+        actividades.MapPost("/", CreateAsync)
+            .WithName("CrearActividad")
+            .WithSummary("Crea una actividad o subactividad")
+            .WithDescription("userId es el dueno. Id, fechaInicio, completada, eliminada y demas campos del servidor se ignoran. " +
+                             "colaboradores acepta [\"usuario-2\"] o [{\"usuarioId\":\"usuario-2\"}] (usuarios registrados).")
+            .Accepts<Actividad>("application/json")
+            .Produces<Actividad>(StatusCodes.Status201Created)
+            .ProducesProblem(StatusCodes.Status400BadRequest)
+            .ProducesProblem(StatusCodes.Status415UnsupportedMediaType)
+            .ProducesProblem(StatusCodes.Status422UnprocessableEntity)
+            .AddEndpointFilter(new ValidationFilter<Actividad>(ActividadValidator.RuleSetCreate));
+
+        actividades.MapPut($"/{{{IdParametro}}}", UpdateAsync)
+            .WithName("ActualizarActividad")
+            .WithSummary("Actualiza una actividad")
+            .WithDescription("userId es quien solicita el cambio (dueno o colaborador). Si se envia colaboradores, " +
+                             "reemplaza la lista y solo el dueno puede hacerlo; si se omite, no se modifican.")
+            .Accepts<Actividad>("application/json")
+            .Produces<Actividad>(StatusCodes.Status200OK)
+            .ProducesProblem(StatusCodes.Status400BadRequest)
+            .ProducesProblem(StatusCodes.Status403Forbidden)
+            .ProducesProblem(StatusCodes.Status404NotFound)
+            .ProducesProblem(StatusCodes.Status415UnsupportedMediaType)
+            .ProducesProblem(StatusCodes.Status422UnprocessableEntity)
+            .AddEndpointFilter(new IdFormatFilter(IdParametro))
+            .AddEndpointFilter(new ValidationFilter<Actividad>(ActividadValidator.RuleSetUpdate));
+
+        actividades.MapDelete($"/{{{IdParametro}}}", DeleteAsync)
+            .WithName("EliminarActividad")
+            .WithSummary("Elimina logicamente una actividad y su subarbol")
+            .WithDescription("Solo el dueno (userId en la query string) puede eliminarla.")
+            .Produces(StatusCodes.Status204NoContent)
+            .ProducesProblem(StatusCodes.Status400BadRequest)
+            .ProducesProblem(StatusCodes.Status403Forbidden)
+            .ProducesProblem(StatusCodes.Status404NotFound)
+            .AddEndpointFilter(new IdFormatFilter(IdParametro))
+            .AddEndpointFilter<UserIdQueryFilter>();
 
         actividades.MapPost($"/{{{IdParametro}}}/compartir", CompartirAsync)
-            .WithSummary("Comparte una actividad con otro estudiante colaborador")
+            .WithName("CompartirActividad")
+            .WithSummary("Comparte una actividad con otro usuario registrado")
+            .WithDescription("userId es el dueno que comparte; usuarioId es el destinatario.")
+            .Accepts<CompartirActividadRequest>("application/json")
             .Produces(StatusCodes.Status200OK)
             .ProducesProblem(StatusCodes.Status400BadRequest)
             .ProducesProblem(StatusCodes.Status403Forbidden)
             .ProducesProblem(StatusCodes.Status404NotFound)
+            .ProducesProblem(StatusCodes.Status415UnsupportedMediaType)
             .ProducesProblem(StatusCodes.Status422UnprocessableEntity)
             .AddEndpointFilter(new IdFormatFilter(IdParametro))
             .AddEndpointFilter<ValidationFilter<CompartirActividadRequest>>();
-
-        actividades.MapPut($"/{{{IdParametro}}}", UpdateAsync)
-            .WithSummary("Actualiza una actividad existente")
-            .WithDescription("Actualiza titulo, fechas, tipo, estado de completado y sincroniza colaboradores si se especifican.")
-            .Produces<Actividad>(StatusCodes.Status200OK)
-            .ProducesProblem(StatusCodes.Status400BadRequest)
-            .ProducesProblem(StatusCodes.Status403Forbidden)
-            .ProducesProblem(StatusCodes.Status404NotFound)
-            .ProducesProblem(StatusCodes.Status422UnprocessableEntity)
-            .AddEndpointFilter(new IdFormatFilter(IdParametro))
-            .AddEndpointFilter(new ValidationFilter<Actividad>("Update"));
-
-        actividades.MapDelete($"/{{{IdParametro}}}", DeleteAsync)
-            .WithSummary("Elimina logicamente una actividad (Soft Delete)")
-            .WithDescription("Solo el duenio puede eliminar la actividad. Si tiene subactividades, se eliminan logicamente en cascada.")
-            .Produces(StatusCodes.Status204NoContent)
-            .ProducesProblem(StatusCodes.Status403Forbidden)
-            .ProducesProblem(StatusCodes.Status404NotFound)
-            .AddEndpointFilter(new IdFormatFilter(IdParametro));
 
         return app;
     }
 
     private static async Task<IResult> GetAllAsync(
-        [FromQuery] string? userId,
-        [FromHeader(Name = "X-User-Id")] string? headerUserId,
-        IActividadDelegate actividadDelegate,
-        CancellationToken cancellationToken)
-    {
-        var callerUserId = !string.IsNullOrWhiteSpace(userId) ? userId : headerUserId;
-        return Results.Ok(await actividadDelegate.GetAllAsync(callerUserId, cancellationToken));
-    }
+        [FromQuery, Required] string? userId, IActividadDelegate actividadDelegate, CancellationToken cancellationToken) =>
+        Results.Ok(await actividadDelegate.GetAllAsync(userId!, cancellationToken));
 
     private static async Task<IResult> GetCalendarioAsync(
-        DateTime? desde,
-        DateTime? hasta,
-        [FromQuery] string? userId,
-        [FromHeader(Name = "X-User-Id")] string? headerUserId,
+        [FromQuery, Required] string? desde,
+        [FromQuery, Required] string? hasta,
+        [FromQuery, Required] string? userId,
         IActividadDelegate actividadDelegate,
         CancellationToken cancellationToken)
     {
-        if (!desde.HasValue || !hasta.HasValue)
-        {
-            return ProblemDetailsResponses.ValidationFailed(
-                !desde.HasValue ? "desde" : "hasta",
-                "Los parametros de consulta 'desde' y 'hasta' son obligatorios para la vista de calendario.");
-        }
+        var errores = new Dictionary<string, string[]>();
+        if (FechaConsulta.TryParseUtc(desde, out var desdeUtc) is { } errorDesde)
+            errores["desde"] = [errorDesde];
+        if (FechaConsulta.TryParseUtc(hasta, out var hastaUtc) is { } errorHasta)
+            errores["hasta"] = [errorHasta];
 
-        var callerUserId = !string.IsNullOrWhiteSpace(userId) ? userId : headerUserId;
-        var actividades = await actividadDelegate.GetCalendarioAsync(desde.Value, hasta.Value, callerUserId, cancellationToken);
-        return Results.Ok(actividades);
+        if (errores.Count > 0)
+            return ProblemDetailsResponses.ValidationFailed(errores);
+
+        return Results.Ok(await actividadDelegate.GetCalendarioAsync(desdeUtc, hastaUtc, userId!, cancellationToken));
     }
 
     private static async Task<IResult> GetByIdAsync(
         string actividadId,
-        [FromQuery] string? userId,
-        [FromHeader(Name = "X-User-Id")] string? headerUserId,
+        [FromQuery, Required] string? userId,
         IActividadDelegate actividadDelegate,
         CancellationToken cancellationToken)
     {
-        var callerUserId = !string.IsNullOrWhiteSpace(userId) ? userId : headerUserId;
-        var actividad = await actividadDelegate.GetByIdAsync(actividadId, callerUserId, cancellationToken);
+        var actividad = await actividadDelegate.GetByIdAsync(actividadId, userId!, cancellationToken);
 
         return actividad is null
             ? ProblemDetailsResponses.NotFound($"No existe una actividad con id '{actividadId}'.")
@@ -130,60 +152,27 @@ public static class ActividadRoutes
         return Results.Created($"{Ruta}/{id}", creada);
     }
 
-    private static async Task<IResult> CompartirAsync(
-        string actividadId,
-        CompartirActividadRequest request,
-        [FromHeader(Name = "X-User-Id")] string? headerUserId,
-        IActividadDelegate actividadDelegate,
-        CancellationToken cancellationToken)
-    {
-        var emisorId = request.ObtenerPropietario() ?? headerUserId;
-        await actividadDelegate.CompartirAsync(actividadId, request.UsuarioId, emisorId, cancellationToken);
-        return Results.Ok(new { mensaje = $"Actividad compartida exitosamente con '{request.UsuarioId}'." });
-    }
-
     private static async Task<IResult> UpdateAsync(
-        string actividadId,
-        Actividad actividad,
-        [FromHeader(Name = "X-User-Id")] string? headerUserId,
-        IActividadDelegate actividadDelegate,
-        CancellationToken cancellationToken)
-    {
-        var callerUserId = !string.IsNullOrWhiteSpace(actividad.UserId) ? actividad.UserId : headerUserId;
-        return Results.Ok(await actividadDelegate.UpdateAsync(actividadId, actividad, callerUserId, cancellationToken));
-    }
+        string actividadId, Actividad actividad, IActividadDelegate actividadDelegate, CancellationToken cancellationToken) =>
+        Results.Ok(await actividadDelegate.UpdateAsync(actividadId, actividad, actividad.UserId, cancellationToken));
 
     private static async Task<IResult> DeleteAsync(
         string actividadId,
-        HttpContext httpContext,
-        [FromQuery] string? queryUserId,
-        [FromHeader(Name = "X-User-Id")] string? headerUserId,
+        [FromQuery, Required] string? userId,
         IActividadDelegate actividadDelegate,
         CancellationToken cancellationToken)
     {
-        string? bodyUserId = null;
-        if (httpContext.Request.HasJsonContentType())
-        {
-            try
-            {
-                var body = await httpContext.Request.ReadFromJsonAsync<DeleteActividadRequest>(cancellationToken);
-                bodyUserId = body?.UserId;
-            }
-            catch
-            {
-                // Si el body viene malformado se ignora o se captura en el callerUserId
-            }
-        }
-
-        var header = !string.IsNullOrWhiteSpace(headerUserId)
-            ? headerUserId
-            : httpContext.Request.Headers["X-User-Id"].FirstOrDefault();
-
-        var callerUserId = !string.IsNullOrWhiteSpace(bodyUserId)
-            ? bodyUserId
-            : (!string.IsNullOrWhiteSpace(queryUserId) ? queryUserId : header);
-
-        await actividadDelegate.DeleteAsync(actividadId, callerUserId, cancellationToken);
+        await actividadDelegate.DeleteAsync(actividadId, userId!, cancellationToken);
         return Results.NoContent();
+    }
+
+    private static async Task<IResult> CompartirAsync(
+        string actividadId,
+        CompartirActividadRequest request,
+        IActividadDelegate actividadDelegate,
+        CancellationToken cancellationToken)
+    {
+        await actividadDelegate.CompartirAsync(actividadId, request.UsuarioId, request.UserId, cancellationToken);
+        return Results.Ok(new { mensaje = $"Actividad compartida exitosamente con '{request.UsuarioId}'." });
     }
 }

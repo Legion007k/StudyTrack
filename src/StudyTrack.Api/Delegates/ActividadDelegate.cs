@@ -6,27 +6,17 @@ namespace StudyTrack.Api.Delegates;
 
 public class ActividadDelegate(IActividadRepository repository, TimeProvider timeProvider) : IActividadDelegate
 {
-    public async Task<IReadOnlyList<Actividad>> GetAllAsync(string? callerUserId = null, CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<Actividad>> GetAllAsync(string callerUserId, CancellationToken cancellationToken = default)
     {
+        ExigirUsuario(callerUserId);
         var actividades = await repository.GetAllAsync(callerUserId, cancellationToken);
-
-        // El arbol se arma desde la lista plana, sin depender de que las navegaciones vengan cargadas.
-        var hijasPorPadre = actividades
-            .Where(a => a.ActividadPadreId is not null)
-            .ToLookup(a => a.ActividadPadreId!);
-
-        var raices = OrdenadasParaMostrar(actividades.Where(a => a.ActividadPadreId is null)).ToList();
-        foreach (var raiz in raices)
-        {
-            AsignarHijas(raiz, hijasPorPadre, nivel: 0);
-        }
-
-        return raices;
+        return ArmarArbol(actividades);
     }
 
     public async Task<IReadOnlyList<Actividad>> GetCalendarioAsync(
-        DateTime desde, DateTime hasta, string? callerUserId = null, CancellationToken cancellationToken = default)
+        DateTime desde, DateTime hasta, string callerUserId, CancellationToken cancellationToken = default)
     {
+        ExigirUsuario(callerUserId);
         var desdeUtc = AUtc(desde);
         var hastaUtc = AUtc(hasta);
 
@@ -34,31 +24,17 @@ public class ActividadDelegate(IActividadRepository repository, TimeProvider tim
             throw new BusinessRuleException("rango", "La fecha 'desde' no puede ser posterior a la fecha 'hasta'.");
 
         var actividades = await repository.GetPorRangoFechasAsync(desdeUtc, hastaUtc, callerUserId, cancellationToken);
-
-        var hijasPorPadre = actividades
-            .Where(a => a.ActividadPadreId is not null)
-            .ToLookup(a => a.ActividadPadreId!);
-
-        var idsEnRango = actividades.Select(a => a.Id).ToHashSet(StringComparer.Ordinal);
-        var raices = OrdenadasParaMostrar(
-            actividades.Where(a => a.ActividadPadreId is null || !idsEnRango.Contains(a.ActividadPadreId)))
-            .ToList();
-
-        foreach (var raiz in raices)
-        {
-            AsignarHijas(raiz, hijasPorPadre, nivel: 0);
-        }
-
-        return raices;
+        return ArmarArbol(actividades);
     }
 
-    public async Task<Actividad?> GetByIdAsync(string id, string? callerUserId = null, CancellationToken cancellationToken = default)
+    public async Task<Actividad?> GetByIdAsync(string id, string callerUserId, CancellationToken cancellationToken = default)
     {
+        ExigirUsuario(callerUserId);
         var actividad = await repository.GetByIdAsync(id, cancellationToken);
         if (actividad is null)
             return null;
 
-        if (callerUserId is not null && !actividad.EsAccesiblePor(callerUserId))
+        if (!await PuedeAccederAsync(actividad, callerUserId, cancellationToken))
             throw new ForbiddenException("No tiene autorizacion para acceder a esta actividad.");
 
         OrdenarHijasRecursivo(actividad);
@@ -67,8 +43,19 @@ public class ActividadDelegate(IActividadRepository repository, TimeProvider tim
 
     public async Task<string> CreateAsync(Actividad actividad, CancellationToken cancellationToken = default)
     {
+        ExigirUsuario(actividad.UserId);
+
+        // Los campos que controla el servidor se fijan aqui, sin importar lo que haya enviado el cliente.
+        actividad.Id = Guid.NewGuid().ToString();
         actividad.FechaInicio = Ahora();
         actividad.FechaFin = AUtc(actividad.FechaFin);
+        actividad.Completada = false;
+        actividad.FechaCompletada = null;
+        actividad.GeneradaAutomaticamente = false;
+        actividad.Eliminada = false;
+        actividad.FechaEliminacion = null;
+        actividad.ActividadPadre = null;
+        actividad.ActividadesHijas = new List<Actividad>();
 
         ValidarRangoDeFechas(actividad);
         await ValidarDuplicadoAsync(actividad, excludeId: null, cancellationToken);
@@ -91,13 +78,19 @@ public class ActividadDelegate(IActividadRepository repository, TimeProvider tim
         return actividad.Id;
     }
 
-    public async Task<Actividad> UpdateAsync(string id, Actividad actividadActualizada, string? callerUserId = null, CancellationToken cancellationToken = default)
+    public async Task<Actividad> UpdateAsync(
+        string id, Actividad actividadActualizada, string callerUserId, CancellationToken cancellationToken = default)
     {
+        ExigirUsuario(callerUserId);
         var actividad = await repository.GetByIdAsync(id, cancellationToken)
             ?? throw new NotFoundException($"No existe una actividad con id '{id}'.");
 
-        if (callerUserId is not null && !actividad.EsAccesiblePor(callerUserId))
+        if (!await PuedeAccederAsync(actividad, callerUserId, cancellationToken))
             throw new ForbiddenException("No tiene autorizacion para modificar esta actividad.");
+
+        // Se revisa antes de tocar cualquier campo para no dejar cambios a medias.
+        if (actividadActualizada.Colaboradores is not null && !actividad.EsPropietario(callerUserId))
+            throw new ForbiddenException("Solo el propietario puede modificar los colaboradores de la actividad.");
 
         actividad.Titulo = actividadActualizada.Titulo;
         actividad.Descripcion = actividadActualizada.Descripcion;
@@ -130,11 +123,6 @@ public class ActividadDelegate(IActividadRepository repository, TimeProvider tim
 
         if (actividadActualizada.Colaboradores is not null)
         {
-            if (callerUserId is not null && !actividad.EsPropietario(callerUserId))
-            {
-                throw new ForbiddenException("Solo el propietario puede modificar los colaboradores de la actividad.");
-            }
-
             await ProcesarColaboradoresActualizacionAsync(actividad, actividadActualizada.Colaboradores, cancellationToken);
         }
 
@@ -144,12 +132,13 @@ public class ActividadDelegate(IActividadRepository repository, TimeProvider tim
     }
 
     public async Task CompartirAsync(
-        string id, string usuarioIdDestino, string? callerUserId = null, CancellationToken cancellationToken = default)
+        string id, string usuarioIdDestino, string callerUserId, CancellationToken cancellationToken = default)
     {
+        ExigirUsuario(callerUserId);
         var actividad = await repository.GetByIdAsync(id, cancellationToken)
             ?? throw new NotFoundException($"No existe una actividad con id '{id}'.");
 
-        if (string.IsNullOrWhiteSpace(callerUserId) || !actividad.EsPropietario(callerUserId))
+        if (!actividad.EsPropietario(callerUserId))
             throw new ForbiddenException("Solo el propietario puede compartir la actividad con otros usuarios.");
 
         if (usuarioIdDestino == actividad.UserId)
@@ -161,23 +150,84 @@ public class ActividadDelegate(IActividadRepository repository, TimeProvider tim
         await repository.CompartirAsync(actividad, usuarioIdDestino, Ahora(), cancellationToken);
     }
 
-    public async Task DeleteAsync(string id, string? callerUserId = null, CancellationToken cancellationToken = default)
+    public async Task DeleteAsync(string id, string callerUserId, CancellationToken cancellationToken = default)
     {
+        ExigirUsuario(callerUserId);
         var actividad = await repository.GetByIdAsync(id, cancellationToken)
             ?? throw new NotFoundException($"No existe una actividad con id '{id}'.");
 
-        if (string.IsNullOrWhiteSpace(callerUserId) || !actividad.EsPropietario(callerUserId))
-            throw new ForbiddenException("Solo el propietario puede eliminar la actividad. No se permite eliminar actividades sin especificar un usuario.");
+        if (!actividad.EsPropietario(callerUserId))
+            throw new ForbiddenException("Solo el propietario puede eliminar la actividad.");
 
         // El repositorio recibe la actividad con su subarbol cargado y elimina tambien a las descendientes.
-        await repository.DeleteAsync(actividad, cancellationToken);
+        await repository.DeleteAsync(actividad, Ahora(), cancellationToken);
     }
 
     /// <summary>Hora UTC actual: instante absoluto para evitar desfases de zona horaria.</summary>
     private DateTime Ahora() => timeProvider.GetUtcNow().UtcDateTime;
 
+    /// <summary>
+    /// Convierte a UTC. La API rechaza fechas sin zona antes de llegar aqui; si aun asi llega una
+    /// (por ejemplo desde otra capa), se toma como UTC.
+    /// </summary>
     private static DateTime AUtc(DateTime dt) =>
         dt.Kind == DateTimeKind.Unspecified ? DateTime.SpecifyKind(dt, DateTimeKind.Utc) : dt.ToUniversalTime();
+
+    /// <summary>La capa HTTP ya valida el usuario; esto protege a otros llamadores del delegate.</summary>
+    private static void ExigirUsuario(string? userId)
+    {
+        if (string.IsNullOrWhiteSpace(userId))
+            throw new BadRequestException("userId", "El userId es obligatorio.");
+    }
+
+    /// <summary>
+    /// El usuario puede ver o editar la actividad si es suya, si se la compartieron o si cuelga
+    /// de una actividad compartida con el.
+    /// </summary>
+    private async Task<bool> PuedeAccederAsync(Actividad actividad, string userId, CancellationToken cancellationToken)
+    {
+        var actual = actividad;
+        for (var nivel = 0; nivel <= Actividad.ProfundidadMaximaAbsoluta; nivel++)
+        {
+            if (actual.EsAccesiblePor(userId))
+                return true;
+
+            if (actual.ActividadPadreId is null)
+                return false;
+
+            var padre = await repository.GetByIdAsync(actual.ActividadPadreId, cancellationToken);
+            if (padre is null)
+                return false;
+
+            actual = padre;
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// Arma el arbol desde una lista plana. Es raiz toda actividad cuyo padre no esta en la lista:
+    /// asi una subactividad compartida (o en rango, en el calendario) aparece aunque su padre no,
+    /// y una hija cuyo padre si esta solo aparece anidada, sin duplicarse en el nivel superior.
+    /// </summary>
+    private static IReadOnlyList<Actividad> ArmarArbol(IReadOnlyList<Actividad> actividades)
+    {
+        var hijasPorPadre = actividades
+            .Where(a => a.ActividadPadreId is not null)
+            .ToLookup(a => a.ActividadPadreId!);
+
+        var ids = actividades.Select(a => a.Id).ToHashSet(StringComparer.Ordinal);
+        var raices = OrdenadasParaMostrar(
+            actividades.Where(a => a.ActividadPadreId is null || !ids.Contains(a.ActividadPadreId)))
+            .ToList();
+
+        foreach (var raiz in raices)
+        {
+            AsignarHijas(raiz, hijasPorPadre, nivel: 0);
+        }
+
+        return raices;
+    }
 
     private static void ValidarRangoDeFechas(Actividad actividad)
     {
@@ -267,93 +317,69 @@ public class ActividadDelegate(IActividadRepository repository, TimeProvider tim
         }
     }
 
-    private async Task ProcesarColaboradoresCreacionAsync(Actividad actividad, CancellationToken cancellationToken)
+    /// <summary>
+    /// Valida los colaboradores de una solicitud y devuelve sus Ids sin repetir. Los Ids distinguen
+    /// mayusculas igual que la base de datos.
+    /// </summary>
+    private async Task<IReadOnlyList<string>> ValidarColaboradoresAsync(
+        Actividad actividad, IEnumerable<ActividadCompartida?> colaboradores, CancellationToken cancellationToken)
     {
-        var procesados = new List<ActividadCompartida>();
-        var ahora = Ahora();
-        var vistos = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var ids = new List<string>();
+        var vistos = new HashSet<string>(StringComparer.Ordinal);
 
-        foreach (var c in actividad.Colaboradores!)
+        foreach (var c in colaboradores)
         {
-            var usuarioId = c.UsuarioId?.Trim();
+            var usuarioId = c?.UsuarioId?.Trim();
             if (string.IsNullOrWhiteSpace(usuarioId))
-            {
                 throw new BadRequestException("colaboradores", "El identificador del colaborador no puede estar vacio.");
-            }
 
             if (usuarioId == actividad.UserId)
-            {
                 throw new BusinessRuleException("colaboradores", "No se puede agregar al creador de la actividad como colaborador.");
-            }
+
+            if (!vistos.Add(usuarioId))
+                continue;
 
             if (!await repository.ExisteUsuarioAsync(usuarioId, cancellationToken))
-            {
                 throw new BadRequestException("colaboradores", $"El colaborador '{usuarioId}' no existe en el sistema.");
-            }
 
-            if (vistos.Add(usuarioId))
-            {
-                procesados.Add(new ActividadCompartida
-                {
-                    ActividadId = actividad.Id,
-                    UsuarioId = usuarioId,
-                    FechaCompartida = ahora
-                });
-            }
+            ids.Add(usuarioId);
         }
 
-        actividad.Colaboradores = procesados;
+        return ids;
+    }
+
+    private async Task ProcesarColaboradoresCreacionAsync(Actividad actividad, CancellationToken cancellationToken)
+    {
+        var ids = await ValidarColaboradoresAsync(actividad, actividad.Colaboradores!, cancellationToken);
+        var ahora = Ahora();
+
+        actividad.Colaboradores = ids
+            .Select(usuarioId => new ActividadCompartida { ActividadId = actividad.Id, UsuarioId = usuarioId, FechaCompartida = ahora })
+            .ToList();
     }
 
     private async Task ProcesarColaboradoresActualizacionAsync(
         Actividad actividad, ICollection<ActividadCompartida> nuevosColaboradores, CancellationToken cancellationToken)
     {
+        var deseados = (await ValidarColaboradoresAsync(actividad, nuevosColaboradores, cancellationToken))
+            .ToHashSet(StringComparer.Ordinal);
+
         actividad.Colaboradores ??= new List<ActividadCompartida>();
-        var ahora = Ahora();
-        var deseados = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-
-        foreach (var c in nuevosColaboradores)
-        {
-            var usuarioId = c.UsuarioId?.Trim();
-            if (string.IsNullOrWhiteSpace(usuarioId))
-            {
-                throw new BadRequestException("colaboradores", "El identificador del colaborador no puede estar vacio.");
-            }
-
-            if (usuarioId == actividad.UserId)
-            {
-                throw new BusinessRuleException("colaboradores", "No se puede agregar al creador de la actividad como colaborador.");
-            }
-
-            if (!await repository.ExisteUsuarioAsync(usuarioId, cancellationToken))
-            {
-                throw new BadRequestException("colaboradores", $"El colaborador '{usuarioId}' no existe en el sistema.");
-            }
-
-            deseados.Add(usuarioId);
-        }
-
-        var paraRemover = actividad.Colaboradores
-            .Where(c => !deseados.Contains(c.UsuarioId))
-            .ToList();
-
-        foreach (var c in paraRemover)
+        foreach (var c in actividad.Colaboradores.Where(c => !deseados.Contains(c.UsuarioId)).ToList())
         {
             actividad.Colaboradores.Remove(c);
         }
 
-        var existentes = actividad.Colaboradores.Select(c => c.UsuarioId).ToHashSet(StringComparer.OrdinalIgnoreCase);
-        foreach (var usuarioId in deseados)
+        var ahora = Ahora();
+        var existentes = actividad.Colaboradores.Select(c => c.UsuarioId).ToHashSet(StringComparer.Ordinal);
+        foreach (var usuarioId in deseados.Where(id => !existentes.Contains(id)))
         {
-            if (!existentes.Contains(usuarioId))
+            actividad.Colaboradores.Add(new ActividadCompartida
             {
-                actividad.Colaboradores.Add(new ActividadCompartida
-                {
-                    ActividadId = actividad.Id,
-                    UsuarioId = usuarioId,
-                    FechaCompartida = ahora
-                });
-            }
+                ActividadId = actividad.Id,
+                UsuarioId = usuarioId,
+                FechaCompartida = ahora
+            });
         }
     }
 }

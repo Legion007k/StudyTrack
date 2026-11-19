@@ -9,6 +9,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Time.Testing;
 using StudyTrack.Api.Domain;
+using StudyTrack.Api.Extensions;
 using StudyTrack.Api.Repositories;
 using StudyTrack.Tests.Builders;
 

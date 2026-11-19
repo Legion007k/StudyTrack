@@ -21,7 +21,10 @@ public record class Actividad
 
     public string Id { get; set; } = Guid.NewGuid().ToString();
 
-    /// <summary>Dueno de la actividad. No hay tabla de usuarios: es un identificador opaco.</summary>
+    /// <summary>
+    /// Dueno de la actividad. Es el identificador que envia el cliente; no se exige que exista en la tabla
+    /// Usuarios (esa tabla solo se usa para validar a los colaboradores).
+    /// </summary>
     public string UserId { get; set; } = string.Empty;
 
     public string Titulo { get; set; } = string.Empty;
